@@ -15,11 +15,13 @@ function viewReview(scope, id) {
   if (scope === 'course') {
     const c = getCourse(id); if (!c) { location.hash = '#/'; return; }
     filter = x => x.courseId === id; title = c.title; backHref = '#/course/' + id;
+  } else if (scope === 'smart') {
+    title = 'Session du jour'; backHref = '#/daily';
   } else if (scope === 'deck') {
     const d = db.decks.find(x => x.id === id); if (!d) { location.hash = '#/'; return; }
     filter = x => d.cardIds.includes(x.id); title = d.name; backHref = '#/library';
   }
-  const queue = shuffle(dueItems(filter)), total = queue.length;
+  const queue = scope === 'smart' ? shuffle(smartPlan().items) : shuffle(dueItems(filter)), total = queue.length;
   const res = { yes: 0, almost: 0, no: 0 }; let resolved = 0, timer = null, cur = null;
   if (!total) {
     $app.innerHTML = `<h1>${esc(title)}</h1><div class="card hero"><div class="big">🎉</div><div>Rien à revoir aujourd'hui. Reviens demain !</div></div><a class="btn ghost" href="${backHref}">Retour</a>`;
@@ -110,7 +112,8 @@ function viewReview(scope, id) {
     $app.innerHTML = `<h1>Séance terminée 🎉</h1>
       <div class="grid"><div class="card stat"><b>${res.yes}</b><span class="muted">Je sais</span></div><div class="card stat"><b>${res.almost}</b><span class="muted">Presque</span></div><div class="card stat"><b>${res.no}</b><span class="muted">Je ne sais pas</span></div></div>
       <div class="card">🔥 ${streak()} jour${streak() > 1 ? 's' : ''} de révision de suite</div>
-      <a class="btn" href="${backHref}">Retour</a>`;
+      ${recommend() ? `<div class="card"><b>Conseil :</b> ${esc(recommend())}</div>` : ''}
+      <div class="row">${scope === 'smart' && smartPlan().questions.length ? '<a class="btn" href="#/daily/quiz">Continuer : mini-quiz</a>' : ''}<a class="btn ${scope === 'smart' && smartPlan().questions.length ? 'ghost' : ''}" href="${backHref}">Retour</a></div>`;
   };
   show();
 }

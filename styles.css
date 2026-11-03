@@ -94,3 +94,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .tile b { font-size: .92rem; }
 .mm-item summary { cursor: pointer; margin-bottom: 8px; }
 .shortcuts { margin-bottom: 10px; }
+.mastery-decouverte { color: var(--muted); } .mastery-encours { color: var(--warn); border-color: var(--warn); } .mastery-presque { color: var(--primary); border-color: var(--primary); } .mastery-maitrise { color: var(--ok); border-color: var(--ok); font-weight: 700; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: .85rem; border: 1px dashed var(--line); color: var(--muted); opacity: .6; filter: grayscale(1); }
+.badge.got { opacity: 1; filter: none; border: 1px solid var(--ok); color: var(--text); background: color-mix(in srgb, var(--ok) 10%, var(--card)); }

@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.4'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.5'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', color: '#2563eb' },
@@ -61,6 +61,7 @@ function migrate(d) {
   d.activity = d.activity && Array.isArray(d.activity.days) ? d.activity : { days: [] };
   d.courses.forEach(c => {
     c.scores = c.scores || []; c.questions = c.questions || []; c.keyPoints = c.keyPoints || [];
+    c.skills = c.skills || {}; c.mistakes = c.mistakes || [];
     if (Array.isArray(c.cards)) {
       c.cards.forEach(x => {
         if (!x || !x.q || !x.a) return;
@@ -237,11 +238,12 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
  "keyPoints": ["notion ou définition essentielle", "..."],
  "cards": [{"q": "...", "a": "...", "explain": "...", "tag": "definition", "reversible": false}],
  "questions": [
-   {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "..."},
-   {"type": "vf", "q": "affirmation", "answer": true, "explanation": "..."},
-   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "..."}
+   {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "...", "skill": "compétence"},
+   {"type": "vf", "q": "affirmation", "answer": true, "explanation": "...", "skill": "compétence"},
+   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "...", "skill": "compétence"}
  ]
 }
+"skill" = la compétence travaillée par la question, en 2 à 4 mots ; 3 à 5 compétences différentes pour tout le quiz.
 Règles de concision : 5 à 8 points clés de 12 mots maximum ; 10 à 14 cartes ; explications de quiz en une phrase courte. Questions : 10 à 14 mélangeant qcm (4 choix, "answer" = index 0-3), vf et short. Ne pose que des questions dont la réponse se trouve dans le cours.
 ${CARD_RULES}
 Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
@@ -252,22 +254,31 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
 {
  "title": "titre du chapitre",
  "summary": "résumé en 2 phrases",
+ "duration": 10,
+ "objectives": ["Je sais … (verbe d'action)", "..."],
+ "prerequisites": ["notion à connaître avant", "..."],
+ "pitfalls": ["Erreur fréquente → ce qu'il faut faire", "..."],
  "lesson": [{"title": "titre de la partie", "content": "- idée courte\\n- idée courte", "examples": ["exemple très court", "..."]}],
  "keyPoints": ["règle ou définition à retenir", "..."],
  "cards": [{"q": "...", "a": "...", "explain": "...", "tag": "definition", "reversible": false}],
  "questions": [
-   {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "..."},
-   {"type": "vf", "q": "affirmation", "answer": true, "explanation": "..."},
-   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "..."}
+   {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "...", "skill": "compétence", "pitfall": "erreur fréquente"},
+   {"type": "vf", "q": "affirmation", "answer": true, "explanation": "...", "skill": "compétence"},
+   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "...", "skill": "compétence"}
  ]
 }
 Règles de concision STRICTES :
+- duration : minutes nécessaires pour lire la leçon (entier de 5 à 20).
+- objectives : 2 à 3 objectifs d'apprentissage de 12 mots maximum, commençant par un verbe (« Savoir… », « Reconnaître… »).
+- prerequisites : 0 à 3 notions à connaître avant ce chapitre (tableau vide s'il n'y en a pas).
+- pitfalls : 2 à 3 erreurs fréquentes des élèves sur ce chapitre, chacune avec la bonne façon de faire (« Erreur → Correction », 20 mots maximum).
+- skill (sur chaque question) : la compétence travaillée en 2 à 4 mots (ex. « Accorder le participe passé »). Utilise 3 à 5 compétences différentes pour tout le quiz, plusieurs questions par compétence. "pitfall" (facultatif) : l'erreur fréquente que la question vise, en une phrase.
 - summary : 2 phrases maximum.
 - lesson : 3 à 5 parties. Chaque "content" fait 60 mots maximum, écrit en lignes courtes qui commencent par "- " (une idée par ligne), jamais de long paragraphe. 1 à 3 "examples" très courts par partie.
 - keyPoints : 5 à 7 points de 12 mots maximum, à apprendre par cœur.
 - cards : 10 à 14 cartes. ${CARD_RULES}
 - questions : 12 à 16 variées (qcm avec 4 choix et "answer" = index 0-3, vf, short), énoncé de 20 mots maximum, "explanation" d'une seule phrase courte.
-Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
+Les mauvaises réponses d'un qcm sont plausibles (erreurs réelles d'élèves), jamais absurdes. Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
 
 const SYSTEM_SPLIT = `Tu aides un collégien à découper une carte de révision trop longue en plusieurs cartes courtes. Chaque carte porte UNE seule idée.
 Réponds UNIQUEMENT par un objet JSON valide : {"cards": [{"q": "question claire terminée par ?", "a": "réponse de 200 caractères maximum"}]}
@@ -323,14 +334,21 @@ function parseJSON(text) {
 function normQuestions(list) {
   return (list || []).map(q => {
     if (!q || !q.q) return null;
+    const meta = { skill: q.skill ? clip(String(q.skill), 40) : '', pitfall: q.pitfall ? clip(String(q.pitfall), 160) : '' };
     if (q.type === 'qcm' && Array.isArray(q.choices) && q.choices.length >= 2) {
       const idx = Number.isInteger(q.answer) ? q.answer : 0;
-      return { id: uid(), type: 'qcm', q: q.q, choices: q.choices.map(String), answer: Math.min(Math.max(idx, 0), q.choices.length - 1), explanation: q.explanation || '' };
+      return { id: uid(), type: 'qcm', q: q.q, choices: q.choices.map(String), answer: Math.min(Math.max(idx, 0), q.choices.length - 1), explanation: q.explanation || '', ...meta };
     }
-    if (q.type === 'vf') return { id: uid(), type: 'qcm', q: q.q, choices: ['Vrai', 'Faux'], answer: q.answer === true || q.answer === 'true' ? 0 : 1, explanation: q.explanation || '' };
-    if (q.type === 'short' && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), explanation: q.explanation || '' };
+    if (q.type === 'vf') return { id: uid(), type: 'qcm', q: q.q, choices: ['Vrai', 'Faux'], answer: q.answer === true || q.answer === 'true' ? 0 : 1, explanation: q.explanation || '', ...meta };
+    if (q.type === 'short' && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), explanation: q.explanation || '', ...meta };
     return null;
   }).filter(Boolean);
+}
+/* Champs pédagogiques d'un cours généré : durée, objectifs, prérequis, erreurs fréquentes */
+const strList = (a, n, len) => (Array.isArray(a) ? a : []).map(x => clip(String(x || ''), len)).filter(Boolean).slice(0, n);
+function courseExtras(r) {
+  const d = Math.round(Number(r.duration));
+  return { duration: d >= 3 && d <= 60 ? d : 0, objectives: strList(r.objectives, 3, 110), prerequisites: strList(r.prerequisites, 3, 90), pitfalls: strList(r.pitfalls, 3, 160) };
 }
 const normLesson = list => (list || []).filter(s => s && s.title && s.content).map(s => ({ title: String(s.title), content: String(s.content), examples: Array.isArray(s.examples) ? s.examples.map(String) : [] }));
 function normMindmap(m) {
