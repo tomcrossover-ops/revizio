@@ -4,6 +4,8 @@
 /* ---------- Routeur ---------- */
 const routes = [
   [/^\/?$/, viewHome],
+  [/^\/courses$/, viewCourses],
+  [/^\/mindmaps$/, viewMindmaps],
   [/^\/new$/, viewGenerate],
   [/^\/import$/, viewImport],
   [/^\/course\/(\w+)$/, viewCourse],
@@ -16,7 +18,7 @@ const routes = [
 ];
 function route() {
   const path = location.hash.replace(/^#/, '') || '/';
-  const area = path === '/new' || path === '/import' ? 'new' : path.startsWith('/library') || path.startsWith('/card/') ? 'library' : path === '/settings' ? 'settings' : 'home';
+  const area = path === '/new' || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' ? 'settings' : 'home';
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === area));
   for (const [re, fn] of routes) {
     const m = path.match(re);
@@ -37,6 +39,11 @@ function viewHome() {
     <div class="card hero">${due
       ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">Commencer</a>`
       : `<div class="big">🎉</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}</div>
+    <div class="grid shortcuts">
+      <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
+      <a class="card tile" href="#/mindmaps"><span class="ico">🧠</span><b>Cartes mentales</b><span class="muted">${db.courses.filter(c => c.mindmap).length} carte${db.courses.filter(c => c.mindmap).length > 1 ? 's' : ''}</span></a>
+      <a class="card tile" href="#/library"><span class="ico">🗂️</span><b>Mes cartes</b><span class="muted">${total} carte${total > 1 ? 's' : ''}</span></a>
+    </div>
     <div class="grid">
       <div class="card stat"><b>${total}</b><span class="muted">cartes créées</span></div>
       <div class="card stat"><b>${mastered}</b><span class="muted">maîtrisées</span></div>
@@ -52,11 +59,54 @@ function viewHome() {
       const n = dueItems(c => d.cardIds.includes(c.id)).length;
       return `<div class="card row between"><span><b>${esc(d.name)}</b> <span class="muted">${d.cardIds.length} cartes${n ? ` · ${n} à revoir` : ''}</span></span><a class="btn ghost" href="#/review/deck/${d.id}">Réviser</a></div>`;
     }).join('')}` : ''}
-    <h2>Mes cours</h2>
-    ${db.courses.length ? db.courses.slice().sort((a, b) => b.createdAt - a.createdAt).map(courseCard).join('') :
+    <div class="row between"><h2>Derniers cours</h2>${db.courses.length > 3 ? '<a href="#/courses">Tout voir →</a>' : ''}</div>
+    ${db.courses.length ? db.courses.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 3).map(courseCard).join('') :
       `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
     ${progressBySubject()}`;
 }
+/* ---------- Bibliothèque de cours ---------- */
+function viewCourses() {
+  const st = { level: '', subject: '', q: '' };
+  const levels = LEVELS.filter(l => db.courses.some(c => c.level === l));
+  const subjects = Object.keys(SUBJECTS).filter(k => db.courses.some(c => c.subject === k));
+  $app.innerHTML = `
+    <div class="row between"><h1>Mes cours</h1><a class="btn" href="#/new">+ Nouveau</a></div>
+    ${db.courses.length ? `<div class="row2">
+      <select id="fl"><option value="">Toutes les classes</option>${levels.map(l => `<option>${l}</option>`).join('')}</select>
+      <select id="fs"><option value="">Toutes les matières</option>${subjects.map(k => `<option value="${k}">${esc(SUBJECTS[k].label)}</option>`).join('')}</select>
+    </div><input id="fq" placeholder="Rechercher un cours…" style="margin:10px 0" autocomplete="off">` : ''}
+    <div id="list"></div>`;
+  const draw = () => {
+    const q = normText(st.q);
+    const list = db.courses.filter(c => (!st.level || c.level === st.level) && (!st.subject || c.subject === st.subject) && (!q || normText(c.title).includes(q)))
+      .sort((a, b) => b.createdAt - a.createdAt);
+    document.getElementById('list').innerHTML = list.length ? list.map(courseCard).join('')
+      : `<div class="card muted">${db.courses.length ? 'Aucun cours ne correspond.' : 'Aucun cours pour l\'instant. <a href="#/new">Crée ton premier cours</a> ou <a href="#/import">importe le tien</a>.'}</div>`;
+  };
+  if (db.courses.length) {
+    document.getElementById('fl').onchange = e => { st.level = e.target.value; draw(); };
+    document.getElementById('fs').onchange = e => { st.subject = e.target.value; draw(); };
+    document.getElementById('fq').oninput = e => { st.q = e.target.value; draw(); };
+  }
+  draw();
+}
+
+/* ---------- Cartes mentales ---------- */
+function viewMindmaps() {
+  const withMap = db.courses.filter(c => c.mindmap).sort((a, b) => b.createdAt - a.createdAt);
+  const without = db.courses.filter(c => !c.mindmap).sort((a, b) => b.createdAt - a.createdAt);
+  $app.innerHTML = `
+    <h1>Cartes mentales</h1>
+    <p class="muted">Une carte mentale résume un chapitre en un coup d'œil. Elle se crée avec « Comprendre la leçon ».</p>
+    ${withMap.map((c, i) => `<details class="card mm-item" ${i === 0 ? 'open' : ''}>
+      <summary><b>${esc(c.title)}</b> ${subjChip(c.subject)}</summary>
+      ${mindmapHtml(c.mindmap)}
+      <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/course/${c.id}">Ouvrir le cours</a><a class="btn ghost" href="#/understand/${c.id}">Refaire</a></div>
+    </details>`).join('')}
+    ${!withMap.length ? `<div class="card muted">Aucune carte mentale pour l'instant.${db.courses.length ? ' Choisis un cours ci-dessous pour en créer une.' : ' <a href="#/new">Crée d\'abord un cours.</a>'}</div>` : ''}
+    ${without.length ? `<h2>Pas encore de carte mentale</h2>${without.map(c => `<div class="card row between"><span><b>${esc(c.title)}</b> ${subjChip(c.subject)}</span><a class="btn ghost" href="#/understand/${c.id}">Créer</a></div>`).join('')}` : ''}`;
+}
+
 function courseCard(c) {
   const sc = avgScore(c), n = cardsOf(c.id).length, d = dueItems(x => x.courseId === c.id).length;
   return `<a class="card course" href="#/course/${c.id}">
