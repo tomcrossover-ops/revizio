@@ -1,12 +1,12 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.2'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.3'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', color: '#2563eb' },
   francais: { label: 'Français', color: '#db2777' },
-  langues: { label: 'Langues vivantes', color: '#0d9488' },
+  langues: { label: 'Anglais', color: '#0d9488' },
   histgeo: { label: 'Histoire-Géo', color: '#d97706' },
   svt: { label: 'SVT', color: '#16a34a' },
   physique: { label: 'Physique-Chimie', color: '#7c3aed' },
@@ -210,6 +210,7 @@ function importCSV(text) {
   const rows = parseCSV(text); let cols = CSV_COLS, start = 0, added = 0, skipped = 0;
   if (rows.length && rows[0].map(h => normText(h).replace(/\s/g, '')).includes('recto')) { cols = rows[0].map(h => normText(h).replace(/\s/g, '')); start = 1; }
   const subjMap = {}; Object.entries(SUBJECTS).forEach(([k, v]) => { subjMap[normText(k)] = k; subjMap[normText(v.label)] = k; });
+  subjMap[normText('Langues vivantes')] = 'langues'; // anciens exports CSV
   const tagMap = {}; Object.entries(TAGS).forEach(([k, v]) => { tagMap[normText(k)] = k; tagMap[normText(v)] = k; });
   for (let r = start; r < rows.length; r++) {
     const o = {}; cols.forEach((k, i) => { o[k] = (rows[r][i] || '').trim(); });
