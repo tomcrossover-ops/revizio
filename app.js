@@ -4,11 +4,14 @@
 const SUBJECTS = {
   maths: { label: 'Maths', color: '#2563eb' },
   francais: { label: 'Français', color: '#db2777' },
-  langues: { label: 'Langues', color: '#0d9488' },
+  langues: { label: 'Langues vivantes', color: '#0d9488' },
   histgeo: { label: 'Histoire-Géo', color: '#d97706' },
   svt: { label: 'SVT', color: '#16a34a' },
+  physique: { label: 'Physique-Chimie', color: '#7c3aed' },
+  techno: { label: 'Technologie', color: '#0891b2' },
   autre: { label: 'Autre', color: '#6b7280' },
 };
+const LEVELS = ['6e', '5e', '4e', '3e'];
 const MODELS = [
   ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recommandé)'],
   ['claude-haiku-5-5', 'Claude Haiku 5.5 (plus rapide, moins cher)'],
@@ -25,7 +28,7 @@ function load() {
     const d = JSON.parse(localStorage.getItem(KEY));
     if (d && d.courses) return d;
   } catch (e) { /* ignore */ }
-  return { settings: { name: '', apiKey: '', model: MODELS[0][0] }, courses: [] };
+  return { settings: { name: '', apiKey: '', model: MODELS[0][0], level: '6e' }, courses: [] };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
@@ -70,7 +73,24 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
 }
 Règles : 6 à 10 points clés, 10 à 14 cartes mémoire, 10 à 14 questions mélangeant qcm (4 choix, "answer" = index 0-3), vf et short. Ne pose que des questions dont la réponse se trouve dans le cours. Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
 
-async function callClaude(content, maxTokens = 6000) {
+const SYSTEM_GEN = `Tu es un professeur de collège expérimenté (France). Un élève te demande de préparer un cours sur un chapitre du programme officiel de l'Éducation nationale pour sa classe (6e : cycle 3 ; 5e, 4e, 3e : cycle 4).
+Écris une leçon claire, exacte et adaptée à l'âge et au niveau de la classe indiquée : vocabulaire simple, phrases courtes, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
+Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises markdown) de la forme :
+{
+ "title": "titre du chapitre",
+ "summary": "résumé en 3 à 5 phrases",
+ "lesson": [{"title": "titre de la partie", "content": "explication (peut contenir des retours à la ligne)", "examples": ["exemple concret", "..."]}],
+ "keyPoints": ["règle ou définition à retenir", "..."],
+ "cards": [{"q": "question courte", "a": "réponse courte"}],
+ "questions": [
+   {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "..."},
+   {"type": "vf", "q": "affirmation", "answer": true, "explanation": "..."},
+   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "..."}
+ ]
+}
+Règles : 3 à 6 parties dans la leçon, 6 à 10 points clés, 10 à 14 cartes, 12 à 16 questions variées (qcm avec 4 choix et "answer" = index 0-3, vf, short). Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
+
+async function callClaude(content, maxTokens = 6000, system = SYSTEM) {
   const { apiKey, model } = db.settings;
   if (!apiKey) throw new Error('Ajoute ta clé API dans les Réglages.');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -81,7 +101,7 @@ async function callClaude(content, maxTokens = 6000) {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({ model, max_tokens: maxTokens, system: SYSTEM, messages: [{ role: 'user', content }] }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content }] }),
   });
   if (!res.ok) {
     let m = res.status + '';
@@ -90,6 +110,7 @@ async function callClaude(content, maxTokens = 6000) {
     throw new Error(m);
   }
   const data = await res.json();
+  if (data.stop_reason === 'max_tokens') throw new Error('La réponse était trop longue et a été coupée. Réessaie, ou précise un chapitre plus petit.');
   const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
   return parseJSON(text);
 }
@@ -113,6 +134,7 @@ function normQuestions(list) {
   }).filter(Boolean);
 }
 const normCards = list => (list || []).filter(c => c && c.q && c.a).map(c => ({ id: uid(), q: String(c.q), a: String(c.a), box: 0, due: 0 }));
+const normLesson = list => (list || []).filter(s => s && s.title && s.content).map(s => ({ title: String(s.title), content: String(s.content), examples: Array.isArray(s.examples) ? s.examples.map(String) : [] }));
 
 /* Fichiers : images réduites en JPEG, PDF en base64 */
 function fileToB64(file) {
@@ -151,6 +173,7 @@ function gradeCard(card, knew) {
 const routes = [
   [/^\/?$/, viewHome],
   [/^\/import$/, viewImport],
+  [/^\/new$/, viewGenerate],
   [/^\/course\/(\w+)$/, viewCourse],
   [/^\/cards(?:\/(\w+))?$/, viewCards],
   [/^\/quiz\/(\w+)$/, viewQuiz],
@@ -160,7 +183,7 @@ function route() {
   const path = location.hash.replace(/^#/, '') || '/';
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active',
     (a.dataset.nav === 'home' && (path === '/' || path.startsWith('/course') || path.startsWith('/cards') || path.startsWith('/quiz'))) ||
-    (a.dataset.nav === 'import' && path === '/import') || (a.dataset.nav === 'settings' && path === '/settings')));
+    (a.dataset.nav === 'import' && (path === '/import' || path === '/new')) || (a.dataset.nav === 'settings' && path === '/settings')));
   for (const [re, fn] of routes) {
     const m = path.match(re);
     if (m) { window.scrollTo(0, 0); return fn(...m.slice(1)); }
@@ -183,9 +206,9 @@ function viewHome() {
       <div class="card stat"><b>${db.courses.reduce((n, c) => n + c.scores.length, 0)}</b><span class="muted">quiz faits</span></div>
     </div>
     ${due ? `<a class="btn" href="#/cards" style="display:block;margin-bottom:12px">Réviser les ${due} cartes du jour</a>` : ''}
-    <div class="row between"><h2>Mes cours</h2><a class="btn" href="#/import">+ Ajouter un cours</a></div>
+    <div class="row between"><h2>Mes cours</h2><a class="btn" href="#/new">+ Nouveau cours</a></div>
     ${db.courses.length ? db.courses.slice().sort((a, b) => b.createdAt - a.createdAt).map(courseCard).join('') :
-      `<div class="card muted">Aucun cours pour l'instant. Ajoute une photo ou un PDF de ta leçon, ou colle le texte, et Révizio prépare fiche, cartes mémoire et quiz.</div>`}
+      `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
     ${progressBySubject()}
   `;
 }
@@ -193,7 +216,7 @@ function courseCard(c) {
   const sc = avgScore(c), d = dueCards(c).length;
   return `<a class="card course" href="#/course/${c.id}">
     <div class="row between"><b>${esc(c.title)}</b>${tag(c.subject)}</div>
-    <div class="muted">${c.cards.length} cartes · ${c.questions.length} questions${d ? ` · <b>${d} à revoir</b>` : ''}</div>
+    <div class="muted">${c.level ? esc(c.level) + ' · ' : ''}${c.cards.length} cartes · ${c.questions.length} questions${d ? ` · <b>${d} à revoir</b>` : ''}</div>
     ${sc !== null ? `<div class="bar" style="margin-top:8px"><i style="width:${sc}%"></i></div><div class="muted">Moyenne récente : ${sc} %</div>` : ''}
   </a>`;
 }
@@ -207,10 +230,60 @@ function progressBySubject() {
   return rows ? `<h2>Progression par matière</h2><div class="card">${rows}</div>` : '';
 }
 
+/* ---------- Vue : cours demandé par classe / matière / chapitre ---------- */
+const fmt = s => esc(s).split(/\n+/).filter(Boolean).map(p => `<p>${p}</p>`).join('');
+function lessonHtml(c) {
+  if (!c.lesson || !c.lesson.length) return '';
+  return `<div class="card"><h2 style="margin-top:0">La leçon</h2>
+    ${c.lesson.map(s => `<h3>${esc(s.title)}</h3>${fmt(s.content)}${s.examples.length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}`).join('')}
+    <p class="muted">Leçon générée par IA d'après le programme de ${esc(c.level || 'ta classe')}. Compare-la avec ton cahier : ton professeur a pu insister sur d'autres points.</p></div>`;
+}
+function viewGenerate() {
+  const lvl = db.settings.level || '6e';
+  $app.innerHTML = `
+    <h1>Réviser un chapitre</h1>
+    <p class="muted">Choisis ta classe, la matière et le chapitre : Révizio prépare la leçon, des cartes mémoire et un quiz. Tu as déjà ton cours ? <a href="#/import">Importe-le plutôt</a>.</p>
+    <form id="f" class="card">
+      <label>Classe</label>
+      <select id="level">${LEVELS.map(l => `<option ${l === lvl ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <label>Matière</label>
+      <select id="subject">${Object.entries(SUBJECTS).filter(([k]) => k !== 'autre').map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
+      <label>Chapitre ou notion</label>
+      <input id="chapter" placeholder="Ex. Conjugaison : le passé simple" autocomplete="off">
+      <label>Précisions (facultatif)</label>
+      <input id="extra" placeholder="Ex. surtout les verbes du 1er groupe" autocomplete="off">
+      <div class="row" style="margin-top:14px"><button id="go" type="submit">Préparer mon cours</button><span id="st"></span></div>
+    </form>`;
+  document.getElementById('f').onsubmit = async ev => {
+    ev.preventDefault();
+    const level = document.getElementById('level').value, subject = document.getElementById('subject').value;
+    const chapter = document.getElementById('chapter').value.trim(), extra = document.getElementById('extra').value.trim();
+    if (chapter.length < 3) return toast('Indique le chapitre à réviser.');
+    db.settings.level = level; save();
+    const btn = document.getElementById('go'), st = document.getElementById('st');
+    btn.disabled = true; st.innerHTML = '<span class="spinner"></span> Préparation du cours… (≈ 30-60 s)';
+    try {
+      const text = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${extra ? `\nPrécisions : ${extra}` : ''}`;
+      const r = await callClaude([{ type: 'text', text }], 8000, SYSTEM_GEN);
+      const course = {
+        id: uid(), subject, level, origin: 'generated', title: r.title || chapter, createdAt: Date.now(),
+        summary: r.summary || '', lesson: normLesson(r.lesson), keyPoints: r.keyPoints || [],
+        cards: normCards(r.cards), questions: normQuestions(r.questions), scores: [],
+      };
+      if (!course.cards.length && !course.questions.length) throw new Error('Rien de généré, reformule le chapitre et réessaie.');
+      db.courses.push(course); save();
+      toast('Cours prêt ✔'); location.hash = '#/course/' + course.id;
+    } catch (e) {
+      st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false;
+    }
+  };
+}
+
 /* ---------- Vue : import d'un cours ---------- */
 function viewImport() {
   $app.innerHTML = `
-    <h1>Nouveau cours</h1>
+    <h1>Importer mon cours</h1>
+    <p class="muted">Tu as ta leçon en photo, en PDF ou en texte ? Sinon, <a href="#/new">demande un chapitre du programme</a>.</p>
     <form id="f" class="card">
       <label>Matière</label>
       <select id="subject">${Object.entries(SUBJECTS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
@@ -258,6 +331,7 @@ function viewCourse(id) {
       <a class="btn" href="#/quiz/${c.id}">Quiz</a>
     </div>
     <div class="card"><h2 style="margin-top:0">Résumé</h2><p>${esc(c.summary)}</p></div>
+    ${lessonHtml(c)}
     <div class="card"><h2 style="margin-top:0">À retenir</h2><ul class="points">${c.keyPoints.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>
     ${c.scores.length ? `<div class="card"><h2 style="margin-top:0">Mes quiz</h2>${c.scores.slice(-6).reverse().map(s => `<div class="row between"><span class="muted">${fmtDate(s.date)}</span><b>${s.score}/${s.total}</b></div>`).join('')}</div>` : ''}
     <div class="row" style="margin-top:8px">
