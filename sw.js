@@ -1,6 +1,6 @@
-const VERSION = '1.3'; // à garder identique à APP_VERSION dans app.js
+const VERSION = '2.0'; // à garder identique à APP_VERSION dans app.js
 const CACHE = 'revizio-' + VERSION;
-const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg'];
+const ASSETS = ['./', 'index.html', 'styles.css', 'core.js', 'cards.js', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
 // Pas de skipWaiting automatique : la nouvelle version attend que l'utilisateur clique sur « Mettre à jour ».
 self.addEventListener('install', e => {
