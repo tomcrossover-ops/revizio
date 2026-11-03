@@ -123,3 +123,36 @@ button.ghost, .btn.ghost, button.danger, .choice { box-shadow: none; }
 @keyframes glow { from { text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 25%, transparent); } to { text-shadow: 0 0 22px color-mix(in srgb, var(--gold) 65%, transparent); } }
 nav a { white-space: nowrap; }
 @media (min-width: 521px) { .brand .bt { display: inline; } }
+
+/* ---------- Profil, emploi du temps, parcours, cartes visuelles ---------- */
+.btn.small, button.small { padding: 6px 12px; font-size: .88rem; }
+.avatars { display: flex; flex-wrap: wrap; gap: 8px; }
+.av { background: var(--bg); color: var(--text); border: 2px solid var(--line); font-size: 1.6rem; padding: 6px 10px; box-shadow: none; line-height: 1.2; }
+.av:hover { background: var(--bg); border-color: var(--gold); }
+.av.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 20%, var(--card)); }
+.ttrow { display: grid; grid-template-columns: 5.5em 1fr; gap: 6px; align-items: start; margin: 8px 0; }
+.chips .tg { background: var(--bg); color: var(--text); border: 2px solid var(--line); font-size: .85rem; font-weight: 600; padding: 5px 10px; border-radius: 99px; box-shadow: none; }
+.chips .tg:hover { background: var(--bg); border-color: var(--sc); }
+.chips .tg.on { background: var(--sc); border-color: var(--sc); color: #fff; }
+.prep { border-color: var(--gold); }
+.prep-row { padding: 10px 0; border-top: 1px dashed var(--line); }
+.week { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
+.wd { border: 1px solid var(--line); border-radius: 10px; padding: 6px 2px; text-align: center; font-size: .72rem; background: var(--bg); min-height: 3em; }
+.wd > b { display: block; margin-bottom: 4px; color: var(--muted); }
+.wd.today { border-color: var(--primary); } .wd.today > b { color: var(--link); }
+.wd.prep { border: 2px solid var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--card)); }
+.ws { display: block; margin: 2px 0; line-height: 1.1; } .ws small { display: block; color: var(--sc); font-weight: 700; font-size: .62rem; }
+.path .steps { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.step { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--muted); font-size: .92rem; }
+.step i { font-style: normal; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); font-size: .8rem; }
+.step.now { color: var(--text); } .step.now i { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 25%, var(--card)); }
+.step.done { color: var(--ok); } .step.done i { background: var(--ok); border-color: var(--ok); color: #fff; }
+.path .sep { flex: 1; height: 2px; background: var(--line); min-width: 8px; }
+.vis { border-top: 6px solid var(--sc, var(--gold)); }
+.bigemoji { font-size: 4.2rem; line-height: 1.1; margin-bottom: 8px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .18)); }
+.bigemoji.sm { font-size: 2.6rem; text-align: center; margin-bottom: 4px; }
+.flash.vis { min-height: 230px; }
+details > summary { cursor: pointer; }
+.prep > .row.between { flex-wrap: nowrap; align-items: flex-start; }
+.prep > .row.between h2 { font-size: 1.02rem; }
+.prep > .row.between a { white-space: nowrap; }

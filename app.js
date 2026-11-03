@@ -6,10 +6,12 @@ const routes = [
   [/^\/?$/, viewHome],
   [/^\/courses$/, viewCourses],
   [/^\/mindmaps$/, viewMindmaps],
-  [/^\/new$/, viewGenerate],
+  [/^\/new(?:\?(.*))?$/, viewGenerate],
+  [/^\/profile$/, viewProfile],
+  [/^\/path\/(\w+)\/cards$/, id => viewReview('course', id, { path: true, limit: 8 })],
   [/^\/import$/, viewImport],
   [/^\/course\/(\w+)$/, viewCourse],
-  [/^\/review(?:\/(course|deck)\/(\w+))?$/, viewReview],
+  [/^\/review(?:\/(course|deck|subject)\/(\w+))?$/, (s, i) => viewReview(s, i)],
   [/^\/quiz\/(\w+)$/, id => viewQuiz(id)],
   [/^\/quiz\/(\w+)\/weak$/, id => viewQuiz(id, 'weak')],
   [/^\/daily$/, viewDaily],
@@ -22,7 +24,7 @@ const routes = [
 ];
 function route() {
   const path = location.hash.replace(/^#/, '') || '/';
-  const area = path === '/new' || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' ? 'settings' : 'home';
+  const area = path.startsWith('/new') || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === area));
   for (const [re, fn] of routes) {
     const m = path.match(re);
@@ -36,13 +38,15 @@ window.addEventListener('hashchange', route);
 function viewHome() {
   const due = dueItems().length, total = db.cards.length;
   const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir').length;
-  const hello = db.settings.name ? `Salut ${esc(db.settings.name)} 🪄` : 'Bienvenue à l\'Académie Révizio 🪄';
+  const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🪄')}` : 'Bienvenue à l\'Académie Révizio 🪄';
   $app.innerHTML = `
     <h1>${hello}</h1>
+    ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>🪄 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
     ${!db.settings.apiKey ? `<div class="card"><b>Première étape :</b> ajoute ta clé API dans les <a href="#/settings">Réglages</a> pour que Révizio puisse créer des cours et des cartes. Tu peux déjà <a href="#/card/new">créer des cartes à la main</a>.</div>` : ''}
     <div class="card hero">${due
       ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} magique${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">Lancer la séance</a>`
       : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}</div>
+    ${prepHtml()}
     ${(() => { const p = smartPlan(), rec = recommend(); return (p.items.length || p.questions.length ? `<a class="card course" href="#/daily"><div class="row between"><b>🔮 Ma séance du jour</b><span class="muted">≈ ${p.minutes} min</span></div><div class="muted">${p.items.length} carte${p.items.length > 1 ? 's' : ''} · ${p.questions.length} question${p.questions.length > 1 ? 's' : ''} sur tes notions fragiles</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
     <div class="grid shortcuts">
       <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
@@ -113,6 +117,20 @@ function viewMindmaps() {
     ${without.length ? `<h2>Pas encore de carte mentale</h2>${without.map(c => `<div class="card row between"><span><b>${esc(c.title)}</b> ${subjChip(c.subject)}</span><a class="btn ghost" href="#/understand/${c.id}">Créer</a></div>`).join('')}` : ''}`;
 }
 
+/* ---------- Emploi du temps : « À préparer » et « Ma semaine » ---------- */
+function prepHtml() {
+  if (!hasSchedule()) return db.settings.profileDone ? `<div class="card"><b>📅 Emploi du temps</b><div class="muted">Indique tes matières de la semaine pour que Révizio te dise quoi préparer en priorité.</div><a class="btn ghost" href="#/profile" style="margin-top:8px">Remplir mon emploi du temps</a></div>` : '';
+  const level = db.settings.level || '6e', now = new Date(), today = now.getDay(), days = prepDays(now), subjects = prepSubjects(now);
+  const rows = subjects.map(k => {
+    const due = dueItems(x => x.subject === k).length, has = db.courses.some(c => c.subject === k), sug = suggestChapter(level, k);
+    return `<div class="prep-row"><div class="row between">${subjChip(k)}<span class="muted">${has ? (due ? `<b>${due} carte${due > 1 ? 's' : ''} à revoir</b>` : 'à jour') : 'aucun cours'}</span></div>
+      <div class="row" style="margin-top:6px">${due ? `<a class="btn small" href="#/review/subject/${k}">Réviser</a>` : ''}${sug ? `<a class="btn ghost small" href="#/new?subject=${k}&ch=${sug.i}">Chapitre suivant : ${esc(sug.title)}</a>` : `<a class="btn ghost small" href="#/new?subject=${k}">Nouveau chapitre</a>`}</div></div>`;
+  }).join('');
+  const prepDow = days.map(d => d.dow);
+  const grid = `<div class="week">${WEEK.map(([d, n]) => `<div class="wd${d === today ? ' today' : ''}${prepDow.includes(d) ? ' prep' : ''}"><b>${n.slice(0, 3)}</b>${subjectsOfDay(d).map(k => `<span class="ws" style="--sc:${SUBJECTS[k].color}" title="${esc(SUBJECTS[k].label)}">${SUBJECTS[k].emoji}<small>${esc(SUBJECTS[k].short)}</small></span>`).join('')}</div>`).join('')}</div>`;
+  return `<div class="card prep"><div class="row between"><h2 style="margin:0">📅 À préparer pour ${esc(prepLabel(now))}</h2><a href="#/profile">Modifier</a></div>
+    <div class="muted" style="margin:6px 0 10px">Les 2 prochains jours de cours : Révizio met ces matières en tête de ta séance.</div>${rows}${grid}</div>`;
+}
 function courseCard(c) {
   const sc = avgScore(c), n = cardsOf(c.id).length, d = dueItems(x => x.courseId === c.id).length;
   return `<a class="card course" href="#/course/${c.id}">
@@ -149,11 +167,11 @@ function lessonHtml(c) {
     ${c.lesson.map(s => `<h3>${esc(s.title)}</h3>${fmt(s.content)}${s.examples.length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}`).join('')}
     <p class="muted">Leçon générée par IA d'après le programme de ${esc(c.level || 'ta classe')}. Compare-la avec ton cahier : ton professeur a pu insister sur d'autres points.</p></div>`;
 }
-function viewGenerate() {
-  const lvl = db.settings.level || '6e';
+function viewGenerate(query) {
+  const q = Object.fromEntries(new URLSearchParams(query || '')), lvl = db.settings.level || '6e';
   $app.innerHTML = `
     <h1>Réviser un chapitre</h1>
-    <p class="muted">Choisis ta classe, la matière et le chapitre : Révizio écrit ton grimoire : la leçon, des cartes magiques et une épreuve. Tu as déjà ton cours ? <a href="#/import">Importe-le plutôt</a>.</p>
+    <p class="muted">Choisis ta classe, la matière et le chapitre. Révizio écrit ton grimoire : la leçon, quelques cartes visuelles, puis un test pour mesurer ton niveau.</p>
     <form id="f" class="card">
       <label>Classe</label>
       <select id="level">${LEVELS.map(l => `<option ${l === lvl ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -166,6 +184,12 @@ function viewGenerate() {
         <label>Ton chapitre ou ta notion</label>
         <input id="chapter" placeholder="Ex. Conjugaison : le passé simple" autocomplete="off">
       </div>
+      <details id="own" style="margin-top:12px"><summary><b>📷 J'ai mon cours</b> <span class="muted">(photo, PDF ou texte — facultatif)</span></summary>
+        <div class="muted" style="margin:6px 0">La leçon s'appuiera sur le cours de ton professeur. Sans fichier, elle suit le programme.</div>
+        <input id="files" type="file" accept="image/*,application/pdf" multiple>
+        <div class="muted">Sur téléphone, prends ton cahier en photo. Jusqu'à 6 fichiers.</div>
+        <textarea id="text" placeholder="…ou colle le texte de ton cours ici" style="margin-top:8px"></textarea>
+      </details>
       <label>Précisions (facultatif)</label>
       <input id="extra" placeholder="Ex. surtout les verbes du 1er groupe" autocomplete="off">
       <div class="muted" style="margin-top:6px">Les chapitres suivent les programmes officiels ; l'ordre peut différer de celui de ta classe. Ton chapitre n'y est pas ? Choisis « Autre chapitre… ».</div>
@@ -174,12 +198,9 @@ function viewGenerate() {
   const $ = id => document.getElementById(id);
   const FREE = '__free';
   const fillSubjects = () => {
-    const level = $('level').value, keep = $('subject').value;
-    const inCat = catalogSubjects(level);
-    const keys = Object.keys(SUBJECTS).filter(k => k !== 'autre');
-    $('subject').innerHTML = keys.map(k => `<option value="${k}">${esc(SUBJECTS[k].label)}</option>`).join('');
-    const pick = keys.includes(keep) ? keep : (inCat[0] || keys[0]);
-    $('subject').value = pick;
+    const keep = $('subject').value, keys = Object.keys(SUBJECTS).filter(k => k !== 'autre');
+    $('subject').innerHTML = keys.map(k => `<option value="${k}">${esc(SUBJECTS[k].emoji + ' ' + SUBJECTS[k].label)}</option>`).join('');
+    $('subject').value = keys.includes(keep) ? keep : (catalogSubjects($('level').value)[0] || keys[0]);
   };
   const fillChapters = () => {
     const list = chaptersFor($('level').value, $('subject').value);
@@ -195,22 +216,29 @@ function viewGenerate() {
   $('level').onchange = () => { fillSubjects(); fillChapters(); };
   $('subject').onchange = fillChapters;
   $('chsel').onchange = showNotions;
-  fillSubjects(); fillChapters();
+  fillSubjects();
+  if (SUBJECTS[q.subject] && q.subject !== 'autre') $('subject').value = q.subject; // arrivée depuis « À préparer »
+  fillChapters();
+  if (q.ch !== undefined && chaptersFor($('level').value, $('subject').value)[+q.ch]) { $('chsel').value = String(+q.ch); showNotions(); }
   $('f').onsubmit = async ev => {
     ev.preventDefault();
     const level = $('level').value, subject = $('subject').value;
     const list = chaptersFor(level, subject), v = $('chsel').value, entry = v === FREE ? null : list[+v];
     const chapter = entry ? entry[0] : $('chapter').value.trim(), extra = $('extra').value.trim();
     if (chapter.length < 3) return toast('Indique le chapitre à réviser.');
+    const files = [...$('files').files].slice(0, 6), pasted = $('text').value.trim(), own = files.length > 0 || pasted.length >= 30;
     db.settings.level = level; save();
     const btn = $('go'), st = $('st');
-    btn.disabled = true; st.innerHTML = '<span class="spinner"></span> Le grimoire s\'écrit… (≈ 30-60 s)';
+    btn.disabled = true; st.innerHTML = `<span class="spinner"></span> ${own ? 'Lecture de ton cours…' : 'Le grimoire s\'écrit…'} (≈ 30-70 s)`;
     try {
-      const text = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${entry ? `\nNotions au programme de ce chapitre (reste dans ce périmètre) : ${entry[1]}` : ''}${extra ? `\nPrécisions : ${extra}` : ''}`;
-      const r = await callClaude([{ type: 'text', text }], 8000, SYSTEM_GEN);
+      const head = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${entry ? `\nNotions au programme de ce chapitre (reste dans ce périmètre) : ${entry[1]}` : ''}${extra ? `\nPrécisions : ${extra}` : ''}`;
+      let content;
+      if (own) { content = await buildContent(files, pasted, subject, chapter, `Classe : ${level}.${entry ? ` Notions au programme : ${entry[1]}.` : ''} ${extra}`); content[content.length - 1].text = head + '\n\n' + content[content.length - 1].text; }
+      else content = [{ type: 'text', text: head }];
+      const r = await callClaude(content, 8000, SYSTEM_GEN);
       const course = {
-        id: uid(), subject, level, origin: 'generated', title: r.title || chapter, createdAt: Date.now(),
-        summary: r.summary || '', lesson: normLesson(r.lesson), keyPoints: r.keyPoints || [], questions: normQuestions(r.questions), scores: [], skills: {}, mistakes: [], ...courseExtras(r),
+        id: uid(), subject, level, origin: own ? 'imported' : 'generated', catalogTitle: entry ? entry[0] : '', title: r.title || chapter, createdAt: Date.now(),
+        summary: r.summary || '', lesson: normLesson(r.lesson), keyPoints: r.keyPoints || [], questions: normQuestions(r.questions), scores: [], skills: {}, mistakes: [], path: {}, ...courseExtras(r),
       };
       const cards = normCards(r.cards, { subject, chapter: course.title, courseId: course.id });
       if (!cards.length && !course.questions.length) throw new Error('Rien de généré, reformule le chapitre et réessaie.');
@@ -219,6 +247,40 @@ function viewGenerate() {
     } catch (e) {
       st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false;
     }
+  };
+}
+
+/* ---------- Profil : avatar, prénom, classe, emploi du temps ---------- */
+const AVATARS = ['🧙', '🧚', '🦉', '🐉', '🦄', '🐺', '🦊', '🐱'];
+function viewProfile() {
+  const s = db.settings, first = !s.profileDone, keys = Object.keys(SUBJECTS).filter(k => k !== 'autre');
+  $app.innerHTML = `
+    <h1>${first ? 'Crée ton profil' : 'Mon profil'}</h1>
+    <form id="f" class="card">
+      <label>Ton avatar</label>
+      <div class="avatars">${AVATARS.map(a => `<button type="button" class="av${a === s.avatar ? ' on' : ''}" data-a="${a}" aria-pressed="${a === s.avatar}">${a}</button>`).join('')}</div>
+      <label>Prénom</label><input id="name" value="${esc(s.name)}" placeholder="Ton prénom" autocomplete="off">
+      <label>Classe</label>
+      <select id="level">${LEVELS.map(l => `<option ${l === (s.level || '6e') ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <h2>Mon emploi du temps</h2>
+      <div class="muted">Coche les matières de chaque jour. Révizio te fait préparer en priorité les matières des <b>2 prochains jours de cours</b> : le week-end, ce sont celles de lundi et mardi ; le mercredi, celles de jeudi et vendredi.</div>
+      <div id="tt">${WEEK.map(([d, n]) => `<div class="ttrow"><b>${n}</b><div class="chips">${keys.map(k => { const on = subjectsOfDay(d).includes(k); return `<button type="button" class="tg${on ? ' on' : ''}" data-d="${d}" data-k="${k}" aria-pressed="${on}" style="--sc:${SUBJECTS[k].color}">${SUBJECTS[k].emoji} ${esc(SUBJECTS[k].short)}</button>`; }).join('')}</div></div>`).join('')}</div>
+      <div class="row" style="margin-top:14px"><button type="submit">${first ? 'Commencer' : 'Enregistrer'}</button>${first ? '' : '<a class="btn ghost" href="#/">Annuler</a>'}</div>
+    </form>`;
+  const sched = s.schedule = s.schedule || {};
+  document.querySelectorAll('.av').forEach(b => b.onclick = () => {
+    s.avatar = b.dataset.a; save(); document.querySelectorAll('.av').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+  });
+  document.querySelectorAll('.tg').forEach(b => b.onclick = () => {
+    const d = b.dataset.d, k = b.dataset.k, list = sched[d] || (sched[d] = []), i = list.indexOf(k);
+    if (i < 0) list.push(k); else list.splice(i, 1);
+    save();
+    b.classList.toggle('on', i < 0); b.setAttribute('aria-pressed', i < 0);
+  });
+  document.getElementById('f').onsubmit = ev => {
+    ev.preventDefault();
+    s.name = document.getElementById('name').value.trim(); s.level = document.getElementById('level').value; s.profileDone = true; save();
+    toast('Profil enregistré ✨'); location.hash = '#/';
   };
 }
 
@@ -264,6 +326,13 @@ function viewImport() {
 }
 
 /* ---------- Fiche d'un cours ---------- */
+/* Parcours guidé : cours → cartes visuelles → test */
+function pathHtml(c) {
+  const st = pathState(c), next = pathNext(c);
+  const act = { read: '<button id="startpath">Étape 1 : lire la leçon ↓</button>', cards: `<a class="btn" href="#/path/${c.id}/cards">Étape 2 : réviser les cartes clés</a>`, test: `<a class="btn" href="#/quiz/${c.id}">Étape 3 : tester mon niveau</a>` };
+  return `<div class="card path"><div class="steps">${PATH_STEPS.map(([k, n, l]) => `<span class="step${st[k] ? ' done' : ''}${k === next ? ' now' : ''}"><i>${st[k] ? '✔' : n}</i>${l}</span>`).join('<span class="sep"></span>')}</div>
+    <div style="margin-top:10px">${next ? act[next] : '<b>🎓 Parcours terminé !</b> <span class="muted">Reviens réviser tes cartes régulièrement.</span>'}</div></div>`;
+}
 function skillsCard(c) {
   const names = Object.keys(c.skills || {}).filter(n => skillLevel(c, n));
   if (!names.length) return '';
@@ -280,17 +349,19 @@ function viewCourse(id) {
   const n = cardsOf(id).length, d = dueItems(x => x.courseId === id).length;
   $app.innerHTML = `
     <div class="row between"><h1>${esc(c.title)}</h1>${subjChip(c.subject)}</div>
+    ${pathHtml(c)}
     <div class="row" style="margin-bottom:12px">
-      <a class="btn" href="#/review/course/${c.id}">Cartes mémoire${d ? ` (${d})` : ` · ${n}`}</a>
-      <a class="btn" href="#/quiz/${c.id}">Quiz</a>
+      <a class="btn ghost" href="#/review/course/${c.id}">Cartes mémoire${d ? ` (${d})` : ` · ${n}`}</a>
+      <a class="btn ghost" href="#/quiz/${c.id}">Quiz</a>
       <a class="btn ghost" href="#/understand/${c.id}">Comprendre ce chapitre</a>
     </div>
     <div class="row" style="margin-bottom:10px">${masteryChip(c)}${c.duration ? `<span class="chip">⏱ ${c.duration} min</span>` : ''}${c.level ? `<span class="chip">${esc(c.level)}</span>` : ''}</div>
     ${c.objectives && c.objectives.length ? `<div class="card"><h2 style="margin-top:0">Objectifs</h2><ul class="points">${c.objectives.map(p => `<li>${esc(p)}</li>`).join('')}</ul>${c.prerequisites && c.prerequisites.length ? `<div class="muted"><b>À connaître avant :</b> ${c.prerequisites.map(esc).join(' · ')}</div>` : ''}</div>` : ''}
     <div class="card"><h2 style="margin-top:0">Résumé</h2><p>${esc(c.summary)}</p></div>
-    ${lessonHtml(c)}
+    <div id="lessonbox">${lessonHtml(c)}</div>
     ${c.pitfalls && c.pitfalls.length ? `<div class="card"><h2 style="margin-top:0">Erreurs fréquentes</h2><ul class="points">${c.pitfalls.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     <div class="card"><h2 style="margin-top:0">Ce que tu dois retenir</h2><ul class="points">${c.keyPoints.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>
+    ${!pathState(c).read ? `<button id="readdone" style="width:100%;margin-bottom:12px">J'ai lu la leçon ✔ Passer aux cartes</button>` : ''}
     ${skillsCard(c)}
     ${c.mindmap ? `<div class="card"><h2 style="margin-top:0">Carte mentale</h2>${mindmapHtml(c.mindmap)}</div>` : ''}
     ${mistakesCard(c)}
@@ -300,6 +371,10 @@ function viewCourse(id) {
       <button class="danger" id="del">Supprimer ce cours</button>
       <span id="st"></span>
     </div>`;
+  const rd = document.getElementById('readdone');
+  if (rd) rd.onclick = () => { c.path = Object.assign(c.path || {}, { read: true }); save(); location.hash = cardsOf(id).length ? '#/path/' + id + '/cards' : '#/quiz/' + id; };
+  const go = document.getElementById('startpath');
+  if (go) go.onclick = () => { const b = document.getElementById('lessonbox'); if (b) b.scrollIntoView({ behavior: 'smooth' }); };
   document.getElementById('del').onclick = () => {
     if (confirm(`Supprimer ce cours, ses ${n} carte(s) et ses exercices ?`)) {
       removeCards(cardsOf(id).map(x => x.id)); db.courses = db.courses.filter(x => x.id !== id); save(); location.hash = '#/';

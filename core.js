@@ -1,17 +1,17 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.7'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.8'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
-  maths: { label: 'Maths', color: '#2563eb' },
-  francais: { label: 'Français', color: '#db2777' },
-  langues: { label: 'Anglais', color: '#0d9488' },
-  histgeo: { label: 'Histoire-Géo', color: '#d97706' },
-  svt: { label: 'SVT', color: '#16a34a' },
-  physique: { label: 'Physique-Chimie', color: '#7c3aed' },
-  techno: { label: 'Technologie', color: '#0891b2' },
-  autre: { label: 'Autre', color: '#6b7280' },
+  maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
+  francais: { label: 'Français', short: 'Franç.', emoji: '📖', color: '#db2777' },
+  langues: { label: 'Anglais', short: 'Anglais', emoji: '🇬🇧', color: '#0d9488' },
+  histgeo: { label: 'Histoire-Géo', short: 'Hist-Géo', emoji: '🌍', color: '#d97706' },
+  svt: { label: 'SVT', short: 'SVT', emoji: '🌱', color: '#16a34a' },
+  physique: { label: 'Physique-Chimie', short: 'Phys-Chi', emoji: '⚗️', color: '#7c3aed' },
+  techno: { label: 'Technologie', short: 'Techno', emoji: '🛠️', color: '#0891b2' },
+  autre: { label: 'Autre', short: 'Autre', emoji: '✨', color: '#6b7280' },
 };
 const LEVELS = ['CM1', 'CM2', '6e', '5e', '4e', '3e'];
 const MODELS = [
@@ -54,7 +54,8 @@ const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', m
 const freshState = () => ({ step: 0, due: today(), lapses: 0 });
 function migrate(d) {
   d = d && typeof d === 'object' ? d : {};
-  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
+  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🧙', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
+  if (!d.settings.schedule || typeof d.settings.schedule !== 'object') d.settings.schedule = {};
   d.courses = Array.isArray(d.courses) ? d.courses : [];
   d.cards = Array.isArray(d.cards) ? d.cards : [];
   d.decks = Array.isArray(d.decks) ? d.decks : [];
@@ -95,12 +96,20 @@ const getCard = id => db.cards.find(c => c.id === id);
 const cardsOf = courseId => db.cards.filter(c => c.courseId === courseId);
 
 /* ---------- Cartes ---------- */
+const TAG_EMOJI = { definition: '📖', formule: '🧮', date: '📅', vocabulaire: '🔤', methode: '🧭', erreur: '⚠️', comprehension: '💡' };
+/* 1 à 3 émojis qui illustrent la carte (jamais de texte) */
+function cleanEmoji(s) {
+  const t = String(s || '').trim();
+  if (!t || t.length > 16 || /[A-Za-z0-9À-ÿ]/.test(t)) return '';
+  return [...t.replace(/\s+/g, '')].slice(0, 6).join('');
+}
+const cardEmoji = c => c.emoji || TAG_EMOJI[c.tag] || '✨';
 function newCard(o) {
   const tag = TAGS[o.tag] ? o.tag : 'definition';
   const c = {
     id: uid(), subject: SUBJECTS[o.subject] ? o.subject : 'autre', chapter: String(o.chapter || '').trim(), courseId: o.courseId || null,
     tag, front: String(o.front || '').trim(), back: String(o.back || '').trim(), explain: String(o.explain || '').trim(),
-    reversible: !!o.reversible, image: safeImg(o.image) || null, createdAt: Date.now(), fwd: freshState(), rev: null,
+    reversible: !!o.reversible, image: safeImg(o.image) || null, emoji: cleanEmoji(o.emoji), createdAt: Date.now(), fwd: freshState(), rev: null,
   };
   if (c.reversible) c.rev = freshState();
   return c;
@@ -127,7 +136,7 @@ function guessTemplate(c) {
 function normCards(list, ctx) {
   return (list || []).map(c => {
     if (!c || !c.q || !c.a) return null;
-    return newCard({ subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId, tag: c.tag, front: clip(c.q, 200), back: clip(c.a, MAX_BACK), explain: clip(c.explain || '', 220), reversible: !!c.reversible });
+    return newCard({ subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId, tag: c.tag, front: clip(c.q, 200), back: clip(c.a, MAX_BACK), explain: clip(c.explain || '', 220), reversible: !!c.reversible, emoji: c.emoji });
   }).filter(Boolean);
 }
 function removeCards(ids) {
@@ -227,7 +236,7 @@ function importCSV(text) {
 }
 
 /* ---------- Appel à l'API Claude ---------- */
-const CARD_RULES = `Chaque carte = UNE seule idée. Format : {"q": "recto : question claire, 10 mots maximum", "a": "verso : réponse courte (8 mots maximum pour une carte de mémoire, 25 mots maximum pour une carte de compréhension, jamais plus de 200 caractères)", "explain": "une phrase d'explication de 150 caractères maximum", "tag": "definition | formule | date | vocabulaire | methode | erreur | comprehension", "reversible": true ou false}.
+const CARD_RULES = `Chaque carte = UNE seule idée. Format : {"q": "recto : question claire, 10 mots maximum", "a": "verso : réponse courte (8 mots maximum pour une carte de mémoire, 25 mots maximum pour une carte de compréhension, jamais plus de 200 caractères)", "explain": "une phrase d'explication de 150 caractères maximum", "tag": "definition | formule | date | vocabulaire | methode | erreur | comprehension", "emoji": "1 à 2 émojis qui illustrent visuellement la notion (ex. 🌱☀️ pour la photosynthèse), jamais de texte", "reversible": true ou false}.
 "reversible" = true seulement quand la réponse est une notion identifiable à retrouver depuis la question (terme ↔ définition, mot ↔ traduction, date ↔ événement, formule ↔ nom). Environ un quart des cartes sont des cartes de COMPRÉHENSION (tag "comprehension") : « Pourquoi … ? », « À quoi sert … ? », « Donne un exemple de … ». Les autres cartes sont de la mémoire (définitions, formules, dates, vocabulaire, méthodes). Pas de phrases de remplissage.`;
 
 const SYSTEM = `Tu es un professeur bienveillant de collège (France). À partir du cours fourni, tu produis un matériel de révision fiable, fidèle au cours, en français, adapté à un élève de collège.
@@ -249,7 +258,7 @@ ${CARD_RULES}
 Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
 
 const SYSTEM_GEN = `Tu es un professeur expérimenté de primaire et de collège (France). Un élève te demande de préparer un cours sur un chapitre du programme officiel de l'Éducation nationale pour sa classe (CM1, CM2, 6e : cycle 3 ; 5e, 4e, 3e : cycle 4). Pour CM1 et CM2, utilise un vocabulaire encore plus simple, des phrases très courtes et des exemples du quotidien d'un enfant de 9 à 11 ans.
-Écris une leçon COURTE et efficace, comme la fiche de révision d'un très bon élève : va droit à l'essentiel, sans introduction, sans phrases de transition, sans répétition. Une idée par ligne, phrases de 15 mots maximum, vocabulaire simple adapté à l'âge, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si des "Notions au programme" sont indiquées, la leçon, les cartes et les questions couvrent exactement ce périmètre, sans en sortir. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
+Écris une leçon COURTE et efficace, comme la fiche de révision d'un très bon élève : va droit à l'essentiel, sans introduction, sans phrases de transition, sans répétition. Une idée par ligne, phrases de 15 mots maximum, vocabulaire simple adapté à l'âge, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si le cours de l'élève est fourni (photos, PDF ou texte), appuie-toi dessus en priorité : reste fidèle à ce qu'il contient et ne le complète qu'avec les notions du programme qui manquent. Si des "Notions au programme" sont indiquées, la leçon, les cartes et les questions couvrent exactement ce périmètre, sans en sortir. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
 Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises markdown) de la forme :
 {
  "title": "titre du chapitre",
@@ -260,7 +269,7 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
  "pitfalls": ["Erreur fréquente → ce qu'il faut faire", "..."],
  "lesson": [{"title": "titre de la partie", "content": "- idée courte\\n- idée courte", "examples": ["exemple très court", "..."]}],
  "keyPoints": ["règle ou définition à retenir", "..."],
- "cards": [{"q": "...", "a": "...", "explain": "...", "tag": "definition", "reversible": false}],
+ "cards": [{"q": "...", "a": "...", "explain": "...", "tag": "definition", "emoji": "🌱", "reversible": false}],
  "questions": [
    {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "...", "skill": "compétence", "pitfall": "erreur fréquente"},
    {"type": "vf", "q": "affirmation", "answer": true, "explanation": "...", "skill": "compétence"},

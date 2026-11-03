@@ -66,9 +66,11 @@ const masteryChip = c => `<span class="chip mastery-${courseMastery(c)}">${MASTE
 const SMART_CARDS = 12, SMART_QUESTIONS = 5;
 function smartPlan() {
   // cartes dues : d'abord les plus fragiles (beaucoup d'échecs, étape basse), jamais une file infinie
+  const prio = prepSubjects(); // matières des prochains jours de cours : d'abord
+  const rank = x => { const i = prio.indexOf(x.card.subject); return i < 0 ? 99 : i; };
   const items = dueItems().sort((a, b) => {
     const sa = stateOf(a.card, a.dir), sb = stateOf(b.card, b.dir);
-    return (sb.lapses || 0) - (sa.lapses || 0) || sa.step - sb.step;
+    return rank(a) - rank(b) || (sb.lapses || 0) - (sa.lapses || 0) || sa.step - sb.step;
   }).slice(0, SMART_CARDS);
   // questions : uniquement sur les notions fragiles, réparties entre les cours
   const pools = db.courses.map(c => ({ c, qs: shuffle(weakQuestions(c)) })).filter(p => p.qs.length);
@@ -82,6 +84,8 @@ function smartPlan() {
 
 /* ---------- Recommandation claire (accueil, fin de séance, fin de quiz) ---------- */
 function recommend() {
+  const missing = prepSubjects().find(k => !db.courses.some(c => c.subject === k));
+  if (missing) return `Pour ${prepLabel()}, tu n'as pas encore de cours en ${subj(missing).label} : choisis un chapitre.`;
   let weakest = null;
   db.courses.forEach(c => Object.keys(c.skills || {}).forEach(name => {
     const lv = skillLevel(c, name);
@@ -115,4 +119,46 @@ function computeBadges() {
     { id: 'c1', ico: '🎓', label: 'Épreuve réussie', desc: 'Chapitre terminé', got: done >= 1 },
     { id: 'c5', ico: '🏰', label: 'Diplôme de magie', desc: '5 chapitres terminés', got: done >= 5 },
   ];
+}
+
+/* ---------- Emploi du temps : quoi préparer en priorité ---------- */
+const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const WEEK = [[1, 'Lundi'], [2, 'Mardi'], [3, 'Mercredi'], [4, 'Jeudi'], [5, 'Vendredi']];
+const subjectsOfDay = dow => ((db.settings.schedule || {})[dow] || []).filter(k => SUBJECTS[k]);
+const hasSchedule = () => WEEK.some(([d]) => subjectsOfDay(d).length);
+/* Les 2 prochains jours de cours à partir de demain.
+   Samedi, dimanche ou vendredi : lundi et mardi. Mercredi : jeudi et vendredi. */
+function prepDays(now = new Date(), n = 2) {
+  const out = [];
+  for (let i = 1; i <= 14 && out.length < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, 12);
+    const subs = subjectsOfDay(d.getDay());
+    if (subs.length) out.push({ dow: d.getDay(), name: i === 1 ? 'demain' : DAY_NAMES[d.getDay()], subjects: subs });
+  }
+  return out;
+}
+function prepSubjects(now = new Date()) {
+  const s = []; prepDays(now).forEach(d => d.subjects.forEach(k => { if (!s.includes(k)) s.push(k); }));
+  return s;
+}
+const prepLabel = (now = new Date()) => prepDays(now).map(d => d.name).join(' et ');
+/* Premier chapitre du programme pas encore travaillé dans cette matière */
+function suggestChapter(level, subject) {
+  const list = chaptersFor(level, subject);
+  const i = list.findIndex(ch => !db.courses.some(c => c.subject === subject && c.catalogTitle === ch[0]));
+  return i < 0 ? null : { i, title: list[i][0] };
+}
+
+/* ---------- Parcours guidé d'un chapitre : cours → cartes → test ---------- */
+const PATH_STEPS = [['read', '1', 'Cours'], ['cards', '2', 'Cartes'], ['test', '3', 'Test']];
+function pathState(c) {
+  const p = c.path || {};
+  return { read: !!p.read, cards: !!p.cards, test: c.scores.length > 0 };
+}
+function pathNext(c) {
+  const s = pathState(c);
+  if (!s.read) return 'read';
+  if (!s.cards && cardsOf(c.id).length) return 'cards';
+  if (!s.test && c.questions.length) return 'test';
+  return null;
 }

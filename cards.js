@@ -10,21 +10,27 @@ function sides(card, dir) {
 const BONUS = ['Pourquoi ? Explique avec tes mots.', 'Donne un exemple.', 'À quoi cela sert-il ?'];
 
 /* ---------- Révision active ---------- */
-function viewReview(scope, id) {
+function viewReview(scope, id, opts = {}) {
   let filter = () => true, title = 'Révision du jour', backHref = '#/';
   if (scope === 'course') {
     const c = getCourse(id); if (!c) { location.hash = '#/'; return; }
     filter = x => x.courseId === id; title = c.title; backHref = '#/course/' + id;
+  } else if (scope === 'subject') {
+    if (!SUBJECTS[id]) { location.hash = '#/'; return; }
+    filter = x => x.subject === id; title = subj(id).label;
   } else if (scope === 'smart') {
     title = 'Session du jour'; backHref = '#/daily';
   } else if (scope === 'deck') {
     const d = db.decks.find(x => x.id === id); if (!d) { location.hash = '#/'; return; }
     filter = x => d.cardIds.includes(x.id); title = d.name; backHref = '#/library';
   }
-  const queue = scope === 'smart' ? shuffle(smartPlan().items) : shuffle(dueItems(filter)), total = queue.length;
+  let queue = scope === 'smart' ? shuffle(smartPlan().items) : shuffle(dueItems(filter));
+  if (opts.limit) queue = queue.slice(0, opts.limit); // parcours guidé : quelques cartes clés seulement
+  const total = queue.length, pathCourse = opts.path && scope === 'course' ? getCourse(id) : null;
   const res = { yes: 0, almost: 0, no: 0 }; let resolved = 0, timer = null, cur = null;
   if (!total) {
-    $app.innerHTML = `<h1>${esc(title)}</h1><div class="card hero"><div class="big">🎉</div><div>Rien à revoir aujourd'hui. Reviens demain !</div></div><a class="btn ghost" href="${backHref}">Retour</a>`;
+    if (pathCourse) { pathCourse.path = Object.assign(pathCourse.path || {}, { cards: true }); save(); }
+    $app.innerHTML = `<h1>${esc(title)}</h1><div class="card hero"><div class="big">✨</div><div>Rien à revoir aujourd'hui. Reviens demain !</div></div><div class="row">${pathCourse && pathCourse.questions.length ? `<a class="btn" href="#/quiz/${id}">Passer au test</a>` : ''}<a class="btn ghost" href="${backHref}">Retour</a></div>`;
     return;
   }
   const chips = card => `${subjChip(card.subject)} ${tagChip(card.tag)}${card.chapter ? ` <span class="muted">${esc(card.chapter)}</span>` : ''}`;
@@ -37,7 +43,7 @@ function viewReview(scope, id) {
     const { card, dir } = queue[0], sd = sides(card, dir);
     cur = card;
     $app.innerHTML = `${head()}
-      <div class="card flash"><div>${sideHtml(sd.q)}${dir === 'rev' ? '<div class="muted" style="margin-top:12px">Sens inverse : retrouve ce qui correspond.</div>' : ''}</div></div>
+      <div class="card flash vis" style="--sc:${subj(card.subject).color}"><div><div class="bigemoji">${esc(cardEmoji(card))}</div>${sideHtml(sd.q)}${dir === 'rev' ? '<div class="muted" style="margin-top:12px">Sens inverse : retrouve ce qui correspond.</div>' : ''}</div></div>
       <textarea id="mine" rows="2" placeholder="Ta réponse… dans ta tête, à voix haute, ou écris-la ici"></textarea>
       <button id="reveal" style="width:100%;margin-top:10px" disabled>Réfléchis… 2</button>`;
     let n = 2;
@@ -53,7 +59,8 @@ function viewReview(scope, id) {
   const reveal = (card, dir, mine) => {
     const sd = sides(card, dir), s = stateOf(card, dir);
     $app.innerHTML = `${head()}
-      <div class="card">
+      <div class="card vis" style="--sc:${subj(card.subject).color}">
+        <div class="bigemoji sm">${esc(cardEmoji(card))}</div>
         <div class="muted">${sideHtml(sd.q)}</div><hr>
         <div class="answer">${sideHtml(sd.a)}</div>
         ${card.explain ? `<div class="explain">${esc(card.explain)}</div>` : ''}
@@ -109,11 +116,12 @@ function viewReview(scope, id) {
   };
 
   const end = () => {
-    $app.innerHTML = `<h1>Séance terminée ✨</h1>
+    if (pathCourse) { pathCourse.path = Object.assign(pathCourse.path || {}, { cards: true }); save(); }
+    $app.innerHTML = `<h1>${pathCourse ? 'Cartes revues ✨' : 'Séance terminée ✨'}</h1>
       <div class="grid"><div class="card stat"><b>${res.yes}</b><span class="muted">Je sais</span></div><div class="card stat"><b>${res.almost}</b><span class="muted">Presque</span></div><div class="card stat"><b>${res.no}</b><span class="muted">Je ne sais pas</span></div></div>
       <div class="card">🔥 ${streak()} jour${streak() > 1 ? 's' : ''} de révision de suite</div>
       ${recommend() ? `<div class="card"><b>Conseil :</b> ${esc(recommend())}</div>` : ''}
-      <div class="row">${scope === 'smart' && smartPlan().questions.length ? '<a class="btn" href="#/daily/quiz">Continuer : mini-quiz</a>' : ''}<a class="btn ${scope === 'smart' && smartPlan().questions.length ? 'ghost' : ''}" href="${backHref}">Retour</a></div>`;
+      <div class="row">${pathCourse && pathCourse.questions.length ? `<a class="btn" href="#/quiz/${id}">Étape 3 : tester mon niveau</a>` : ''}${scope === 'smart' && smartPlan().questions.length ? '<a class="btn" href="#/daily/quiz">Continuer : mini-quiz</a>' : ''}<a class="btn ${(scope === 'smart' && smartPlan().questions.length) || (pathCourse && pathCourse.questions.length) ? 'ghost' : ''}" href="${backHref}">Retour</a></div>`;
   };
   show();
 }
@@ -145,6 +153,8 @@ function viewCardForm(id) {
       <textarea id="back" rows="2">${esc(c.back)}</textarea>
       <label>Explication courte (facultatif)</label>
       <input id="explain" value="${esc(c.explain)}" maxlength="220">
+      <label>Émoji pour illustrer (facultatif)</label>
+      <input id="emoji" value="${esc(c.emoji || '')}" placeholder="Ex. 🌱☀️" maxlength="12" autocomplete="off" style="max-width:9em">
       <label class="check"><input type="checkbox" id="rev" ${c.reversible ? 'checked' : ''}> Carte inversable : réviser aussi du verso vers le recto</label>
       <div id="err" class="err"></div>
       <div id="split"></div>
@@ -170,7 +180,7 @@ function viewCardForm(id) {
   };
   const read = () => ({
     subject: $('subject').value, tag: $('tag').value, chapter: $('chapter').value, front: $('front').value, back: $('back').value,
-    explain: $('explain').value, reversible: $('rev').checked, image: template === 'img' ? image : null,
+    explain: $('explain').value, emoji: $('emoji').value, reversible: $('rev').checked, image: template === 'img' ? image : null,
   });
   const offerSplit = () => {
     const box = $('split');
@@ -198,7 +208,7 @@ function viewCardForm(id) {
     if (err) { if (o.back.trim().length > MAX_BACK) offerSplit(); return; }
     db.settings.lastSubject = o.subject;
     if (editing) {
-      Object.assign(editing, { ...o, front: o.front.trim(), back: o.back.trim(), explain: o.explain.trim(), chapter: o.chapter.trim(), image: safeImg(o.image) || null });
+      Object.assign(editing, { ...o, emoji: cleanEmoji(o.emoji), front: o.front.trim(), back: o.back.trim(), explain: o.explain.trim(), chapter: o.chapter.trim(), image: safeImg(o.image) || null });
       if (editing.reversible && !editing.rev) editing.rev = freshState();
       if (!editing.reversible) editing.rev = null;
     } else db.cards.push(newCard(o));
@@ -250,7 +260,7 @@ function viewLibrary() {
     $('list').innerHTML = shown.length ? shown.map(c => {
       const lv = cardLevel(c);
       return `<div class="card libcard"><label class="check"><input type="checkbox" data-id="${c.id}" ${picked.has(c.id) ? 'checked' : ''}></label>
-        <a href="#/card/${c.id}" class="libtxt"><b>${esc(c.front || '🖼 Image')}</b><div class="muted">${esc(c.back)}</div>
+        <a href="#/card/${c.id}" class="libtxt"><b>${esc(cardEmoji(c))} ${esc(c.front || '🖼 Image')}</b><div class="muted">${esc(c.back)}</div>
         <div>${subjChip(c.subject)} ${tagChip(c.tag)} <span class="chip lv-${lv}">${MASTERY[lv]}</span>${c.reversible ? ' <span class="chip">⇄</span>' : ''}${c.chapter ? ` <span class="muted">${esc(c.chapter)}</span>` : ''}</div></a></div>`;
     }).join('') + (all.length > shown.length ? `<button class="ghost" id="more" style="width:100%">Afficher plus (${all.length - shown.length})</button>` : '')
       : `<div class="card muted">${db.cards.length ? 'Aucune carte avec ces filtres.' : 'Aucune carte pour l\'instant. Crée-en une, génère un cours, ou importe un CSV.'}</div>`;
