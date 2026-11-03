@@ -20,7 +20,7 @@ const MODELS = [
 const BOX_DAYS = [0, 1, 3, 7, 14, 30]; // intervalle (jours) par boîte de Leitner
 const KEY = 'revizio.v1';
 const DAY = 86400000;
-const APP_VERSION = '1.2'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '1.3'; // à garder identique à VERSION dans sw.js
 
 /* ---------- Stockage ---------- */
 let db = load();
@@ -63,7 +63,7 @@ const SYSTEM = `Tu es un professeur bienveillant de collège (France). À partir
 Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises markdown) de la forme :
 {
  "title": "titre court du cours",
- "summary": "résumé clair en 5 à 8 phrases",
+ "summary": "résumé clair en 3 phrases maximum",
  "keyPoints": ["notion ou définition essentielle", "..."],
  "cards": [{"q": "question courte", "a": "réponse courte"}],
  "questions": [
@@ -72,15 +72,15 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
    {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "..."}
  ]
 }
-Règles : 6 à 10 points clés, 10 à 14 cartes mémoire, 10 à 14 questions mélangeant qcm (4 choix, "answer" = index 0-3), vf et short. Ne pose que des questions dont la réponse se trouve dans le cours. Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
+Règles de concision : 5 à 8 points clés de 12 mots maximum ; 10 à 14 cartes mémoire PUNCHY (question de 10 mots maximum, réponse de 8 mots maximum : un mot, une formule, une règle en une ligne, jamais de phrase explicative) ; explications de quiz en une phrase courte. Questions : 10 à 14 mélangeant qcm (4 choix, "answer" = index 0-3), vf et short. Ne pose que des questions dont la réponse se trouve dans le cours. Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
 
 const SYSTEM_GEN = `Tu es un professeur de collège expérimenté (France). Un élève te demande de préparer un cours sur un chapitre du programme officiel de l'Éducation nationale pour sa classe (6e : cycle 3 ; 5e, 4e, 3e : cycle 4).
-Écris une leçon claire, exacte et adaptée à l'âge et au niveau de la classe indiquée : vocabulaire simple, phrases courtes, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
+Écris une leçon COURTE et efficace, comme la fiche de révision d'un très bon élève : va droit à l'essentiel, sans introduction, sans phrases de transition, sans répétition. Une idée par ligne, phrases de 15 mots maximum, vocabulaire simple adapté à l'âge, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
 Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises markdown) de la forme :
 {
  "title": "titre du chapitre",
- "summary": "résumé en 3 à 5 phrases",
- "lesson": [{"title": "titre de la partie", "content": "explication (peut contenir des retours à la ligne)", "examples": ["exemple concret", "..."]}],
+ "summary": "résumé en 2 phrases",
+ "lesson": [{"title": "titre de la partie", "content": "- idée courte\\n- idée courte", "examples": ["exemple très court", "..."]}],
  "keyPoints": ["règle ou définition à retenir", "..."],
  "cards": [{"q": "question courte", "a": "réponse courte"}],
  "questions": [
@@ -89,7 +89,13 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
    {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "..."}
  ]
 }
-Règles : 3 à 6 parties dans la leçon, 6 à 10 points clés, 10 à 14 cartes, 12 à 16 questions variées (qcm avec 4 choix et "answer" = index 0-3, vf, short). Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
+Règles de concision STRICTES :
+- summary : 2 phrases maximum.
+- lesson : 3 à 5 parties. Chaque "content" fait 60 mots maximum, écrit en lignes courtes qui commencent par "- " (une idée par ligne), jamais de long paragraphe. 1 à 3 "examples" très courts par partie.
+- keyPoints : 5 à 7 points de 12 mots maximum, à apprendre par cœur.
+- cards : 10 à 14 cartes PUNCHY. "q" = 10 mots maximum. "a" = 8 mots maximum : un mot, une formule, une forme conjuguée ou une règle en une ligne, jamais de phrase explicative. Une seule notion par carte. Varie les formats (définition, exemple à compléter, forme à donner, vrai ou faux en deux mots).
+- questions : 12 à 16 variées (qcm avec 4 choix et "answer" = index 0-3, vf, short), énoncé de 20 mots maximum, "explanation" d'une seule phrase courte.
+Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
 
 async function callClaude(content, maxTokens = 6000, system = SYSTEM) {
   const { apiKey, model } = db.settings;
@@ -232,7 +238,16 @@ function progressBySubject() {
 }
 
 /* ---------- Vue : cours demandé par classe / matière / chapitre ---------- */
-const fmt = s => esc(s).split(/\n+/).filter(Boolean).map(p => `<p>${p}</p>`).join('');
+function fmt(s) { // lignes « - … » en puces, le reste en paragraphes
+  const out = []; let list = [];
+  const flush = () => { if (list.length) { out.push(`<ul class="points">${list.join('')}</ul>`); list = []; } };
+  esc(s).split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(l => {
+    const m = l.match(/^[-•*]\s+(.*)/);
+    if (m) list.push(`<li>${m[1]}</li>`); else { flush(); out.push(`<p>${l}</p>`); }
+  });
+  flush();
+  return out.join('');
+}
 function lessonHtml(c) {
   if (!c.lesson || !c.lesson.length) return '';
   return `<div class="card"><h2 style="margin-top:0">La leçon</h2>

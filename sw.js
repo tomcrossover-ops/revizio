@@ -1,4 +1,4 @@
-const VERSION = '1.2'; // à garder identique à APP_VERSION dans app.js
+const VERSION = '1.3'; // à garder identique à APP_VERSION dans app.js
 const CACHE = 'revizio-' + VERSION;
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
