@@ -54,6 +54,8 @@ ul.points { padding-left: 20px; } ul.points li { margin-bottom: 4px; }
 .spinner { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--primary); border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 50; max-width: 90vw; }
+.update { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 60; max-width: 736px; margin: 0 auto; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--text); color: var(--bg); padding: 12px 14px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, .25); }
+.update button { background: var(--primary); color: #fff; white-space: nowrap; }
 .err { color: var(--ko); }
 .score { font-size: 3rem; font-weight: 800; text-align: center; }
 @media (max-width: 520px) { nav a { padding: 6px 7px; font-size: .85rem; } .brand span:last-child { display: none; } }

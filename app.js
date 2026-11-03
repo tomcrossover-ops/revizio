@@ -20,6 +20,7 @@ const MODELS = [
 const BOX_DAYS = [0, 1, 3, 7, 14, 30]; // intervalle (jours) par boîte de Leitner
 const KEY = 'revizio.v1';
 const DAY = 86400000;
+const APP_VERSION = '1.2'; // à garder identique à VERSION dans sw.js
 
 /* ---------- Stockage ---------- */
 let db = load();
@@ -458,6 +459,13 @@ function viewSettings() {
       <select id="model">${MODELS.map(([v, l]) => `<option value="${v}" ${s.model === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <div class="row" style="margin-top:14px"><button type="submit">Enregistrer</button><button type="button" class="ghost" id="test">Tester la clé</button><span id="st"></span></div>
     </form>
+    <h2>Mises à jour</h2>
+    <div class="card row">
+      <div class="muted" style="flex-basis:100%">Version installée : ${APP_VERSION}</div>
+      <button class="ghost" id="updCheck">Rechercher une mise à jour</button>
+      <button class="danger" id="updForce">Forcer la mise à jour</button>
+      <div class="muted" style="flex-basis:100%">« Forcer » vide le cache de l'appli et recharge la dernière version. Tes cours et tes réglages sont conservés.</div>
+    </div>
     <h2>Sauvegarde</h2>
     <div class="card row">
       <button class="ghost" id="exp">Exporter mes données</button>
@@ -472,6 +480,23 @@ function viewSettings() {
       const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model: s.model, max_tokens: 5, messages: [{ role: 'user', content: 'Dis ok' }] }) });
       st.innerHTML = r.ok ? '<b style="color:var(--ok)">Clé valide ✔</b>' : `<span class="err">Échec (${r.status})</span>`;
     } catch (e) { st.innerHTML = '<span class="err">Réseau indisponible</span>'; }
+  };
+  document.getElementById('updCheck').onclick = async () => {
+    if (!swReg) return toast('Les mises à jour ne sont pas disponibles dans ce mode.');
+    try {
+      await swReg.update();
+      if (swReg.waiting && navigator.serviceWorker.controller) showUpdate(swReg.waiting);
+      else if (swReg.installing) toast('Nouvelle version en cours de téléchargement…');
+      else toast('Révizio est à jour ✔');
+    } catch (e) { toast('Impossible de vérifier (pas de connexion ?).'); }
+  };
+  document.getElementById('updForce').onclick = async () => {
+    if (!confirm('Recharger la dernière version de Révizio ? Tes cours et tes réglages sont conservés.')) return;
+    try {
+      if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r => r.unregister()));
+      if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+    } catch (e) { /* on recharge quand même */ }
+    location.reload();
   };
   document.getElementById('exp').onclick = () => {
     const blob = new Blob([JSON.stringify({ courses: db.courses, exportedAt: Date.now() }, null, 1)], { type: 'application/json' });
@@ -488,5 +513,34 @@ function viewSettings() {
 }
 
 /* ---------- Démarrage ---------- */
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+/* Mises à jour : la nouvelle version est téléchargée en arrière-plan, puis activée quand l'utilisateur clique. */
+let swReg = null, wantReload = false;
+function showUpdate(worker) {
+  if (document.getElementById('upd')) return;
+  const b = document.createElement('div');
+  b.id = 'upd'; b.className = 'update';
+  b.innerHTML = '<span>Une nouvelle version de Révizio est disponible.</span><button id="updBtn">Mettre à jour</button>';
+  document.body.appendChild(b);
+  document.getElementById('updBtn').onclick = ev => {
+    ev.target.disabled = true; ev.target.textContent = 'Mise à jour…';
+    wantReload = true;
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  };
+}
+function watchUpdates(reg) {
+  swReg = reg;
+  if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+  reg.addEventListener('updatefound', () => {
+    const nw = reg.installing;
+    if (nw) nw.addEventListener('statechange', () => {
+      if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdate(nw);
+    });
+  });
+}
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').then(watchUpdates).catch(() => {});
+  // Rechargement uniquement après un clic (évite un rechargement surprise à la première installation).
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (wantReload) location.reload(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && swReg) swReg.update().catch(() => {}); });
+}
 route();

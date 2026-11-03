@@ -1,8 +1,14 @@
-const CACHE = 'revizio-v2';
+const VERSION = '1.2'; // à garder identique à APP_VERSION dans app.js
+const CACHE = 'revizio-' + VERSION;
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
+// Pas de skipWaiting automatique : la nouvelle version attend que l'utilisateur clique sur « Mettre à jour ».
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+});
+
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
