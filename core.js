@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.5'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.7'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', color: '#2563eb' },
@@ -54,7 +54,7 @@ const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', m
 const freshState = () => ({ step: 0, due: today(), lapses: 0 });
 function migrate(d) {
   d = d && typeof d === 'object' ? d : {};
-  d.settings = Object.assign({ name: '', apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
+  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
   d.courses = Array.isArray(d.courses) ? d.courses : [];
   d.cards = Array.isArray(d.cards) ? d.cards : [];
   d.decks = Array.isArray(d.decks) ? d.decks : [];
@@ -298,32 +298,10 @@ Règles :
 - mindmap : 3 à 6 branches, 2 à 4 enfants par branche, mots ou groupes de mots de 4 mots maximum, qui relient les notions du chapitre.
 Si l'explication est vide ou sans rapport avec le chapitre, renvoie {"error": "explication courte"}.`;
 
-async function callClaude(content, maxTokens = 6000, system = SYSTEM) {
-  const { apiKey, model } = db.settings;
-  if (!apiKey) throw new Error('Ajoute ta clé API dans les Réglages.');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content }] }),
-  });
-  if (!res.ok) {
-    let m = res.status + '';
-    try { m = (await res.json()).error?.message || m; } catch (e) { /* ignore */ }
-    if (res.status === 401) m = 'Clé API invalide.';
-    throw new Error(m);
-  }
-  const data = await res.json();
-  if (data.stop_reason === 'max_tokens') throw new Error('La réponse était trop longue et a été coupée. Réessaie, ou précise un chapitre plus petit.');
-  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  return parseJSON(text);
-}
+/* callClaude() (appel à l'IA choisie dans les Réglages : Claude, ChatGPT ou Perplexity) est défini dans ai.js */
 const askJSON = (text, system, maxTokens) => callClaude([{ type: 'text', text }], maxTokens, system);
 function parseJSON(text) {
+  text = String(text || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/```(?:json)?/g, '');
   const s = text.indexOf('{'), e = text.lastIndexOf('}');
   if (s < 0 || e < 0) throw new Error('Réponse inattendue de l\'IA, réessaie.');
   let obj;

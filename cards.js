@@ -44,7 +44,7 @@ function viewReview(scope, id) {
     const tick = () => {
       const b = document.getElementById('reveal'); if (!b) return;
       if (--n > 0) { b.textContent = `Réfléchis… ${n}`; timer = setTimeout(tick, 1000); }
-      else { b.disabled = false; b.textContent = 'Révéler la réponse'; }
+      else { b.disabled = false; b.textContent = 'Dévoiler la réponse'; }
     };
     timer = setTimeout(tick, 1000);
     document.getElementById('reveal').onclick = () => reveal(card, dir, document.getElementById('mine').value.trim());
@@ -80,7 +80,7 @@ function viewReview(scope, id) {
   const afterYes = () => {
     const q = BONUS[Math.floor(Math.random() * BONUS.length)];
     $app.innerHTML = `${head()}
-      <div class="card"><b>✔ Bien joué !</b><p>Pour aller plus loin : <b>${q}</b></p><p class="muted">Réponds dans ta tête ou à voix haute.</p></div>
+      <div class="card"><b>✨ Bien joué !</b><p>Pour aller plus loin : <b>${q}</b></p><p class="muted">Réponds dans ta tête ou à voix haute.</p></div>
       <button id="nx" style="width:100%">Carte suivante</button>`;
     document.getElementById('nx').onclick = show;
   };
@@ -109,7 +109,7 @@ function viewReview(scope, id) {
   };
 
   const end = () => {
-    $app.innerHTML = `<h1>Séance terminée 🎉</h1>
+    $app.innerHTML = `<h1>Séance terminée ✨</h1>
       <div class="grid"><div class="card stat"><b>${res.yes}</b><span class="muted">Je sais</span></div><div class="card stat"><b>${res.almost}</b><span class="muted">Presque</span></div><div class="card stat"><b>${res.no}</b><span class="muted">Je ne sais pas</span></div></div>
       <div class="card">🔥 ${streak()} jour${streak() > 1 ? 's' : ''} de révision de suite</div>
       ${recommend() ? `<div class="card"><b>Conseil :</b> ${esc(recommend())}</div>` : ''}

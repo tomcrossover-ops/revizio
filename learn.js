@@ -48,7 +48,7 @@ function cardsFromMistakes(c, wrong) {
 }
 
 /* ---------- Niveau de maîtrise d'un chapitre ---------- */
-const MASTERY_COURSE = { decouverte: 'Découverte', encours: 'En cours', presque: 'Presque acquis', maitrise: 'Maîtrisé' };
+const MASTERY_COURSE = { decouverte: '🌱 Découverte', encours: '🪄 En cours', presque: '✨ Presque acquis', maitrise: '👑 Maîtrisé' };
 function courseMastery(c) {
   const cs = cardsOf(c.id), sc = avgScore(c);
   const mastered = cs.filter(x => cardLevel(x) === 'maitrisee').length, share = cs.length ? mastered / cs.length : null;
@@ -106,13 +106,13 @@ function computeBadges() {
   const best = Math.max(streak(), 0);
   const perfect = db.courses.some(c => c.scores.some(s => s.total >= 5 && s.score === s.total));
   return [
-    { id: 's5', ico: '🔥', label: '5 jours de suite', got: best >= 5 },
-    { id: 's20', ico: '🔥', label: '20 jours de suite', got: best >= 20 },
-    { id: 'm10', ico: '🧠', label: '10 cartes maîtrisées', got: mastered >= 10 },
-    { id: 'm50', ico: '🧠', label: '50 cartes maîtrisées', got: mastered >= 50 },
-    { id: 'm100', ico: '🧠', label: '100 cartes maîtrisées', got: mastered >= 100 },
-    { id: 'q1', ico: '✅', label: 'Quiz parfait', got: perfect },
-    { id: 'c1', ico: '🎓', label: 'Chapitre terminé', got: done >= 1 },
-    { id: 'c5', ico: '🎓', label: '5 chapitres terminés', got: done >= 5 },
+    { id: 's5', ico: '🕯️', label: 'Apprenti assidu', desc: '5 jours de suite', got: best >= 5 },
+    { id: 's20', ico: '🔥', label: 'Sorcier assidu', desc: '20 jours de suite', got: best >= 20 },
+    { id: 'm10', ico: '📜', label: 'Premier parchemin', desc: '10 cartes maîtrisées', got: mastered >= 10 },
+    { id: 'm50', ico: '📚', label: 'Bibliothèque ensorcelée', desc: '50 cartes maîtrisées', got: mastered >= 50 },
+    { id: 'm100', ico: '🧙', label: 'Archimage', desc: '100 cartes maîtrisées', got: mastered >= 100 },
+    { id: 'q1', ico: '⭐', label: 'Sortilège parfait', desc: 'Quiz sans faute', got: perfect },
+    { id: 'c1', ico: '🎓', label: 'Épreuve réussie', desc: 'Chapitre terminé', got: done >= 1 },
+    { id: 'c5', ico: '🏰', label: 'Diplôme de magie', desc: '5 chapitres terminés', got: done >= 5 },
   ];
 }
