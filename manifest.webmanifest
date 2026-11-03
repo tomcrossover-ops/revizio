@@ -1,13 +1,13 @@
 {
   "name": "Révizio",
   "short_name": "Révizio",
-  "description": "L'académie de magie pour réviser ses leçons, s'exercer et s'évaluer.",
+  "description": "L'appli pour réviser ses leçons, s'exercer et s'évaluer.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4ead3",
-  "theme_color": "#3b1d5e",
+  "background_color": "#060a14",
+  "theme_color": "#060a14",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }

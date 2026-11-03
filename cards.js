@@ -117,9 +117,9 @@ function viewReview(scope, id, opts = {}) {
 
   const end = () => {
     if (pathCourse) { pathCourse.path = Object.assign(pathCourse.path || {}, { cards: true }); save(); }
-    $app.innerHTML = `<h1>${pathCourse ? 'Cartes revues ✨' : 'Séance terminée ✨'}</h1>
+    $app.innerHTML = `<h1>${pathCourse ? 'Cartes revues ✔' : esc(tx('session_end')) + ' ✔'}</h1>
       <div class="grid"><div class="card stat"><b>${res.yes}</b><span class="muted">Je sais</span></div><div class="card stat"><b>${res.almost}</b><span class="muted">Presque</span></div><div class="card stat"><b>${res.no}</b><span class="muted">Je ne sais pas</span></div></div>
-      <div class="card">🔥 ${streak()} jour${streak() > 1 ? 's' : ''} de révision de suite</div>
+      <div class="card">🔥 ${streak()} jour${streak() > 1 ? 's' : ''} de révision de suite · ⚡ Niv. ${levelOf(db.activity.xp)}</div>
       ${recommend() ? `<div class="card"><b>Conseil :</b> ${esc(recommend())}</div>` : ''}
       <div class="row">${pathCourse && pathCourse.questions.length ? `<a class="btn" href="#/quiz/${id}">Étape 3 : tester mon niveau</a>` : ''}${scope === 'smart' && smartPlan().questions.length ? '<a class="btn" href="#/daily/quiz">Continuer : mini-quiz</a>' : ''}<a class="btn ${(scope === 'smart' && smartPlan().questions.length) || (pathCourse && pathCourse.questions.length) ? 'ghost' : ''}" href="${backHref}">Retour</a></div>`;
   };

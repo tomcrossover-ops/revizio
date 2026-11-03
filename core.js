@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.8'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.9'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -54,12 +54,14 @@ const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', m
 const freshState = () => ({ step: 0, due: today(), lapses: 0 });
 function migrate(d) {
   d = d && typeof d === 'object' ? d : {};
-  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🧙', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
+  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🥷', theme: 'systeme', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
   if (!d.settings.schedule || typeof d.settings.schedule !== 'object') d.settings.schedule = {};
   d.courses = Array.isArray(d.courses) ? d.courses : [];
   d.cards = Array.isArray(d.cards) ? d.cards : [];
   d.decks = Array.isArray(d.decks) ? d.decks : [];
   d.activity = d.activity && Array.isArray(d.activity.days) ? d.activity : { days: [] };
+  if (typeof d.activity.xp !== 'number') d.activity.xp = 0;
+  if (!d.activity.today || typeof d.activity.today !== 'object') d.activity.today = { date: '', cards: 0, qs: 0, done: false };
   d.courses.forEach(c => {
     c.scores = c.scores || []; c.questions = c.questions || []; c.keyPoints = c.keyPoints || [];
     c.skills = c.skills || {}; c.mistakes = c.mistakes || [];
@@ -171,6 +173,7 @@ function gradeItem(card, dir, rating) {
   if (rating === 'no') s.lapses = (s.lapses || 0) + 1;
   s.step = n.step; s.due = addDays(today(), n.days); s.last = today();
   markActivity();
+  if (typeof onCardGraded === 'function') onCardGraded(rating);
 }
 function dueItems(filter = () => true) {
   const t = today();

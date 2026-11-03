@@ -17,6 +17,7 @@ function skillLevel(c, name) {
 function recordQuizResults(results) {
   results.forEach(({ q, c, ok }) => {
     if (!c) return;
+    onQuizAnswered(ok);
     c.skills = c.skills || {}; c.mistakes = c.mistakes || [];
     const name = skillOf(q), s = c.skills[name] || (c.skills[name] = { r: [] });
     s.r.push(ok ? 1 : 0); s.r = s.r.slice(-8);
@@ -48,7 +49,7 @@ function cardsFromMistakes(c, wrong) {
 }
 
 /* ---------- Niveau de maîtrise d'un chapitre ---------- */
-const MASTERY_COURSE = { decouverte: '🌱 Découverte', encours: '🪄 En cours', presque: '✨ Presque acquis', maitrise: '👑 Maîtrisé' };
+const MASTERY_COURSE = { decouverte: '🌱 Découverte', encours: '⚡ En cours', presque: '✨ Presque acquis', maitrise: '👑 Maîtrisé' };
 function courseMastery(c) {
   const cs = cardsOf(c.id), sc = avgScore(c);
   const mastered = cs.filter(x => cardLevel(x) === 'maitrisee').length, share = cs.length ? mastered / cs.length : null;
@@ -109,16 +110,59 @@ function computeBadges() {
   const done = db.courses.filter(c => courseMastery(c) === 'maitrise').length;
   const best = Math.max(streak(), 0);
   const perfect = db.courses.some(c => c.scores.some(s => s.total >= 5 && s.score === s.total));
+  const names = themeOf().badges;
   return [
-    { id: 's5', ico: '🕯️', label: 'Apprenti assidu', desc: '5 jours de suite', got: best >= 5 },
-    { id: 's20', ico: '🔥', label: 'Sorcier assidu', desc: '20 jours de suite', got: best >= 20 },
-    { id: 'm10', ico: '📜', label: 'Premier parchemin', desc: '10 cartes maîtrisées', got: mastered >= 10 },
-    { id: 'm50', ico: '📚', label: 'Bibliothèque ensorcelée', desc: '50 cartes maîtrisées', got: mastered >= 50 },
-    { id: 'm100', ico: '🧙', label: 'Archimage', desc: '100 cartes maîtrisées', got: mastered >= 100 },
-    { id: 'q1', ico: '⭐', label: 'Sortilège parfait', desc: 'Quiz sans faute', got: perfect },
-    { id: 'c1', ico: '🎓', label: 'Épreuve réussie', desc: 'Chapitre terminé', got: done >= 1 },
-    { id: 'c5', ico: '🏰', label: 'Diplôme de magie', desc: '5 chapitres terminés', got: done >= 5 },
-  ];
+    { id: 's5', ico: '🎯', desc: '5 jours de suite', got: best >= 5 },
+    { id: 's20', ico: '🔥', desc: '20 jours de suite', got: best >= 20 },
+    { id: 'm10', ico: '🧠', desc: '10 cartes maîtrisées', got: mastered >= 10 },
+    { id: 'm50', ico: '🗃️', desc: '50 cartes maîtrisées', got: mastered >= 50 },
+    { id: 'm100', ico: '👑', desc: '100 cartes maîtrisées', got: mastered >= 100 },
+    { id: 'q1', ico: '⭐', desc: 'Quiz sans faute', got: perfect },
+    { id: 'c1', ico: '🏆', desc: 'Chapitre terminé', got: done >= 1 },
+    { id: 'c5', ico: '🎖️', desc: '5 chapitres terminés', got: done >= 5 },
+  ].map((b, i) => Object.assign(b, { label: names[i] }));
+}
+
+/* ---------- Niveaux, rangs, XP et quête du jour ---------- */
+const XP_GAIN = { yes: 10, almost: 5, no: 2, quizOk: 6, read: 20, quest: 50 };
+const RANKS = [['E', 1], ['D', 5], ['C', 10], ['B', 17], ['A', 25], ['S', 35]];
+const levelOf = xp => Math.floor(Math.sqrt(Math.max(0, xp) / 50)) + 1;
+const xpFloor = lv => 50 * (lv - 1) * (lv - 1);
+const rankOf = lv => RANKS.reduce((r, [k, min]) => (lv >= min ? k : r), 'E');
+const QUEST = { cards: 10, qs: 3 };
+function questState() {
+  const q = db.activity.today;
+  if (q.date !== today()) Object.assign(q, { date: today(), cards: 0, qs: 0, done: false });
+  return q;
+}
+function addXP(n) {
+  const before = levelOf(db.activity.xp);
+  db.activity.xp += n;
+  const after = levelOf(db.activity.xp);
+  if (after > before) toast(`⬆ Niveau ${after} atteint !${rankOf(after) !== rankOf(before) ? ' Rang ' + rankOf(after) : ''}`);
+}
+function checkQuest() {
+  const q = questState();
+  if (!q.done && q.cards >= QUEST.cards && q.qs >= QUEST.qs) {
+    q.done = true; addXP(XP_GAIN.quest); toast('🏅 ' + tx('quest_title') + ' accomplie ! +' + XP_GAIN.quest + ' XP');
+  }
+}
+function onCardGraded(rating) {
+  questState().cards++; addXP(XP_GAIN[rating] || 0); checkQuest();
+}
+function onQuizAnswered(ok) {
+  questState().qs++; if (ok) addXP(XP_GAIN.quizOk); checkQuest();
+}
+/* Statistiques de la fiche : Mémoire (cartes maîtrisées), Savoir (cours terminés), Endurance (série), Quêtes (jours actifs) */
+function playerStats() {
+  const lv = levelOf(db.activity.xp), lo = xpFloor(lv), hi = xpFloor(lv + 1);
+  return {
+    xp: db.activity.xp, level: lv, rank: rankOf(lv), into: db.activity.xp - lo, need: hi - lo,
+    pct: Math.round((db.activity.xp - lo) / (hi - lo) * 100),
+    memoire: db.cards.filter(c => cardLevel(c) === 'maitrisee').length,
+    savoir: db.courses.filter(c => courseMastery(c) === 'maitrise').length,
+    endurance: streak(),
+  };
 }
 
 /* ---------- Emploi du temps : quoi préparer en priorité ---------- */

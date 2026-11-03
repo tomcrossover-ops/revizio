@@ -34,20 +34,45 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+/* ---------- Fiche du joueur : niveau, rang, XP, stats, quête du jour ---------- */
+function statusHtml() {
+  const p = playerStats(), q = questState();
+  const bar = (v, max) => `<span class="qbar"><i style="width:${Math.min(100, Math.round(v / max * 100))}%"></i></span>`;
+  return `<section class="card status" aria-label="${esc(tx('status_title'))}">
+      <div class="st-head">
+        <span class="st-av">${esc(db.settings.avatar || '🥷')}</span>
+        <div class="st-id"><b>${esc(db.settings.name || tx('title_name'))}</b><small>${esc(tx('title_name'))}</small></div>
+        <div class="st-rank" title="Rang">${p.rank}</div>
+      </div>
+      <div class="st-lv"><b>Niv. ${p.level}</b><span class="xpbar" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p.pct}%"></i></span><small>${p.into}/${p.need} XP</small></div>
+      <div class="st-stats">
+        <span><small>Mémoire</small><b>${p.memoire}</b></span>
+        <span><small>Savoir</small><b>${p.savoir}</b></span>
+        <span><small>Endurance</small><b>${p.endurance}</b></span>
+      </div>
+      <div class="quest${q.done ? ' done' : ''}">
+        <div class="row between"><b>${q.done ? '🏅' : '🎯'} ${esc(tx('quest_title'))}</b><span class="muted">${q.done ? 'Accomplie ✔ +' + XP_GAIN.quest + ' XP' : '+' + XP_GAIN.quest + ' XP'}</span></div>
+        <div class="qline"><span>Réviser ${QUEST.cards} cartes</span>${bar(q.cards, QUEST.cards)}<small>${Math.min(q.cards, QUEST.cards)}/${QUEST.cards}</small></div>
+        <div class="qline"><span>Répondre à ${QUEST.qs} questions</span>${bar(q.qs, QUEST.qs)}<small>${Math.min(q.qs, QUEST.qs)}/${QUEST.qs}</small></div>
+      </div>
+    </section>`;
+}
+
 /* ---------- Accueil ---------- */
 function viewHome() {
   const due = dueItems().length, total = db.cards.length;
   const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir').length;
-  const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🪄')}` : 'Bienvenue à l\'Académie Révizio 🪄';
+  const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🥷')}` : `${esc(tx('hello_new'))} ${esc(db.settings.avatar || '🥷')}`;
   $app.innerHTML = `
     <h1>${hello}</h1>
-    ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>🪄 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
+    ${statusHtml()}
+    ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
     ${!db.settings.apiKey ? `<div class="card"><b>Première étape :</b> ajoute ta clé API dans les <a href="#/settings">Réglages</a> pour que Révizio puisse créer des cours et des cartes. Tu peux déjà <a href="#/card/new">créer des cartes à la main</a>.</div>` : ''}
     <div class="card hero">${due
-      ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} magique${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">Lancer la séance</a>`
+      ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">${esc(tx('session_btn'))}</a>`
       : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}</div>
     ${prepHtml()}
-    ${(() => { const p = smartPlan(), rec = recommend(); return (p.items.length || p.questions.length ? `<a class="card course" href="#/daily"><div class="row between"><b>🔮 Ma séance du jour</b><span class="muted">≈ ${p.minutes} min</span></div><div class="muted">${p.items.length} carte${p.items.length > 1 ? 's' : ''} · ${p.questions.length} question${p.questions.length > 1 ? 's' : ''} sur tes notions fragiles</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
+    ${(() => { const p = smartPlan(), rec = recommend(); return (p.items.length || p.questions.length ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${p.minutes} min</span></div><div class="muted">${p.items.length} carte${p.items.length > 1 ? 's' : ''} · ${p.questions.length} question${p.questions.length > 1 ? 's' : ''} sur tes notions fragiles</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
     <div class="grid shortcuts">
       <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
       <a class="card tile" href="#/mindmaps"><span class="ico">🧠</span><b>Cartes mentales</b><span class="muted">${db.courses.filter(c => c.mindmap).length} carte${db.courses.filter(c => c.mindmap).length > 1 ? 's' : ''}</span></a>
@@ -68,7 +93,7 @@ function viewHome() {
       const n = dueItems(c => d.cardIds.includes(c.id)).length;
       return `<div class="card row between"><span><b>${esc(d.name)}</b> <span class="muted">${d.cardIds.length} cartes${n ? ` · ${n} à revoir` : ''}</span></span><a class="btn ghost" href="#/review/deck/${d.id}">Réviser</a></div>`;
     }).join('')}` : ''}
-    ${(() => { const b = computeBadges(), n = b.filter(x => x.got).length; return `<h2>Mes distinctions <span class="muted">${n}/${b.length}</span></h2><div class="card badges">${b.map(x => `<span class="badge${x.got ? ' got' : ''}" title="${x.got ? 'Obtenu' : 'À débloquer'}"><span>${x.ico}</span><span><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></span></span>`).join('')}</div>`; })()}
+    ${(() => { const b = computeBadges(), n = b.filter(x => x.got).length; return `<h2>${esc(tx('badges_title'))} <span class="muted">${n}/${b.length}</span></h2><div class="card badges">${b.map(x => `<span class="badge${x.got ? ' got' : ''}" title="${x.got ? 'Obtenu' : 'À débloquer'}"><span>${x.ico}</span><span><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></span></span>`).join('')}</div>`; })()}
     <div class="row between"><h2>Derniers cours</h2>${db.courses.length > 3 ? '<a href="#/courses">Tout voir →</a>' : ''}</div>
     ${db.courses.length ? db.courses.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 3).map(courseCard).join('') :
       `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
@@ -171,7 +196,7 @@ function viewGenerate(query) {
   const q = Object.fromEntries(new URLSearchParams(query || '')), lvl = db.settings.level || '6e';
   $app.innerHTML = `
     <h1>Réviser un chapitre</h1>
-    <p class="muted">Choisis ta classe, la matière et le chapitre. Révizio écrit ton grimoire : la leçon, quelques cartes visuelles, puis un test pour mesurer ton niveau.</p>
+    <p class="muted">Choisis ta classe, la matière et le chapitre. Révizio prépare ton cours : la leçon, quelques cartes visuelles, puis un test pour mesurer ton niveau.</p>
     <form id="f" class="card">
       <label>Classe</label>
       <select id="level">${LEVELS.map(l => `<option ${l === lvl ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -193,7 +218,7 @@ function viewGenerate(query) {
       <label>Précisions (facultatif)</label>
       <input id="extra" placeholder="Ex. surtout les verbes du 1er groupe" autocomplete="off">
       <div class="muted" style="margin-top:6px">Les chapitres suivent les programmes officiels ; l'ordre peut différer de celui de ta classe. Ton chapitre n'y est pas ? Choisis « Autre chapitre… ».</div>
-      <div class="row" style="margin-top:14px"><button id="go" type="submit">Écrire mon grimoire</button><span id="st"></span></div>
+      <div class="row" style="margin-top:14px"><button id="go" type="submit">${esc(tx('gen_btn'))}</button><span id="st"></span></div>
     </form>`;
   const $ = id => document.getElementById(id);
   const FREE = '__free';
@@ -229,7 +254,7 @@ function viewGenerate(query) {
     const files = [...$('files').files].slice(0, 6), pasted = $('text').value.trim(), own = files.length > 0 || pasted.length >= 30;
     db.settings.level = level; save();
     const btn = $('go'), st = $('st');
-    btn.disabled = true; st.innerHTML = `<span class="spinner"></span> ${own ? 'Lecture de ton cours…' : 'Le grimoire s\'écrit…'} (≈ 30-70 s)`;
+    btn.disabled = true; st.innerHTML = `<span class="spinner"></span> ${own ? 'Lecture de ton cours…' : tx('gen_wait')} (≈ 30-70 s)`;
     try {
       const head = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${entry ? `\nNotions au programme de ce chapitre (reste dans ce périmètre) : ${entry[1]}` : ''}${extra ? `\nPrécisions : ${extra}` : ''}`;
       let content;
@@ -243,7 +268,7 @@ function viewGenerate(query) {
       const cards = normCards(r.cards, { subject, chapter: course.title, courseId: course.id });
       if (!cards.length && !course.questions.length) throw new Error('Rien de généré, reformule le chapitre et réessaie.');
       db.courses.push(course); db.cards.push(...cards); save();
-      toast('Grimoire prêt ✨'); location.hash = '#/course/' + course.id;
+      toast(tx('gen_done')); location.hash = '#/course/' + course.id;
     } catch (e) {
       st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false;
     }
@@ -251,7 +276,7 @@ function viewGenerate(query) {
 }
 
 /* ---------- Profil : avatar, prénom, classe, emploi du temps ---------- */
-const AVATARS = ['🧙', '🧚', '🦉', '🐉', '🦄', '🐺', '🦊', '🐱'];
+const AVATARS = ['🥷', '🦸', '🧙', '🧝', '🐉', '🦊', '🐺', '🐱'];
 function viewProfile() {
   const s = db.settings, first = !s.profileDone, keys = Object.keys(SUBJECTS).filter(k => k !== 'autre');
   $app.innerHTML = `
@@ -318,7 +343,7 @@ function viewImport() {
       const cards = normCards(r.cards, { subject, chapter: course.title, courseId: course.id });
       if (!cards.length && !course.questions.length) throw new Error('Rien de généré, essaie avec une photo plus nette.');
       db.courses.push(course); db.cards.push(...cards); save();
-      toast('Grimoire ajouté ✨'); location.hash = '#/course/' + course.id;
+      toast(tx('gen_done')); location.hash = '#/course/' + course.id;
     } catch (e) {
       st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false;
     }
@@ -372,7 +397,7 @@ function viewCourse(id) {
       <span id="st"></span>
     </div>`;
   const rd = document.getElementById('readdone');
-  if (rd) rd.onclick = () => { c.path = Object.assign(c.path || {}, { read: true }); save(); location.hash = cardsOf(id).length ? '#/path/' + id + '/cards' : '#/quiz/' + id; };
+  if (rd) rd.onclick = () => { c.path = Object.assign(c.path || {}, { read: true }); addXP(XP_GAIN.read); save(); location.hash = cardsOf(id).length ? '#/path/' + id + '/cards' : '#/quiz/' + id; };
   const go = document.getElementById('startpath');
   if (go) go.onclick = () => { const b = document.getElementById('lessonbox'); if (b) b.scrollIntoView({ behavior: 'smooth' }); };
   document.getElementById('del').onclick = () => {
@@ -397,7 +422,7 @@ function viewCourse(id) {
 function viewDaily() {
   const p = smartPlan(), rec = recommend();
   $app.innerHTML = `
-    <h1>Ma séance du jour</h1>
+    <h1>${esc(tx('daily_title'))}</h1>
     <p class="muted">Révizio choisit ce qui compte le plus aujourd'hui : les cartes à revoir en priorité, puis des questions sur les notions encore fragiles. Pas de répétition de ce que tu maîtrises déjà.</p>
     ${p.items.length || p.questions.length ? `<div class="card hero">
       <div class="big">≈ ${p.minutes} min</div>
@@ -458,7 +483,7 @@ function viewQuiz(id, mode) {
     if (!mini) c.scores.push({ date: Date.now(), score, total: qs.length, mode: mode || 'full' });
     recordQuizResults(results);
     const pct = Math.round(score / qs.length * 100), wrong = results.filter(r => !r.ok).map(r => r.q);
-    const msg = pct >= 80 ? 'Magnifique, cette leçon est bien maîtrisée !' : pct >= 50 ? 'Pas mal, apprenti : quelques sortilèges à consolider.' : 'À retravailler : relis le grimoire et refais les cartes.';
+    const msg = pct >= 80 ? 'Magnifique, cette leçon est bien maîtrisée !' : pct >= 50 ? 'Pas mal : quelques notions à consolider.' : 'À retravailler : relis la leçon et refais les cartes.';
     // bilan par compétence
     const groups = {};
     results.forEach(r => { const g = groups[skillOf(r.q)] || (groups[skillOf(r.q)] = { ok: 0, n: 0 }); g.n++; if (r.ok) g.ok++; });
@@ -500,6 +525,8 @@ function viewSettings() {
     <h1>Réglages</h1>
     <form id="f" class="card">
       <label>Prénom</label><input id="name" value="${esc(s.name)}" placeholder="Ton prénom">
+      <label>Apparence</label>
+      <select id="theme">${Object.entries(THEMES).map(([k, v]) => `<option value="${k}" ${(THEMES[s.theme] ? s.theme : DEFAULT_THEME) === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
       <label>Intelligence artificielle</label>
       <select id="provider">${Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${P === v ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
       <label>Clé API ${esc(P.short)}</label>
@@ -531,6 +558,7 @@ function viewSettings() {
     s.name = document.getElementById('name').value.trim(); s.apiKey = document.getElementById('key').value.trim();
     s.model = sel.value === '__custom' ? (cm.value.trim() || P.models[0][0]) : sel.value; s.bonus = document.getElementById('bonus').checked; save();
   };
+  document.getElementById('theme').onchange = ev => { s.theme = ev.target.value; save(); applyTheme(); toast('Apparence changée ✔'); };
   document.getElementById('provider').onchange = ev => { read(); switchProvider(ev.target.value); save(); viewSettings(); };
   document.getElementById('f').onsubmit = ev => { ev.preventDefault(); read(); toast('Réglages enregistrés ✔'); };
   document.getElementById('test').onclick = async () => {

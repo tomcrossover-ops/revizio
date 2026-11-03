@@ -100,26 +100,26 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: .85rem; border: 1px dashed var(--line); color: var(--muted); opacity: .6; filter: grayscale(1); }
 .badge.got { opacity: 1; filter: none; border: 1px solid var(--ok); color: var(--text); background: color-mix(in srgb, var(--ok) 10%, var(--card)); }
 
-/* ---------- Thème magique ---------- */
-body { background-image: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--gold) 12%, transparent) 0, transparent 38%), radial-gradient(circle at 92% 30%, color-mix(in srgb, var(--primary) 10%, transparent) 0, transparent 42%); background-attachment: fixed; }
-.topbar { border-bottom: 2px solid var(--gold); background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--card)), var(--card)); }
-.brand { font-family: var(--serif); letter-spacing: .02em; }
-.logo { background: linear-gradient(135deg, #3b1d5e, #6b34a8); color: var(--gold) !important; border: 1px solid var(--gold); font-size: 1.05rem; }
-nav a.active { background: var(--primary); box-shadow: inset 0 -2px 0 var(--gold); }
-.card { border-color: color-mix(in srgb, var(--gold) 35%, var(--line)); box-shadow: 0 1px 0 color-mix(in srgb, var(--gold) 25%, transparent), 0 6px 18px -12px rgba(60, 30, 100, .35); }
-button, .btn { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--gold) 70%, transparent); }
-button.ghost, .btn.ghost, button.danger, .choice { box-shadow: none; }
-.hero { background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--gold) 18%, var(--card)), var(--card) 65%); }
-.hero .big { font-family: var(--serif); color: var(--link); text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 45%, transparent); }
-.flash { font-family: var(--serif); border: 2px solid color-mix(in srgb, var(--gold) 55%, var(--line)); background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--gold) 8%, var(--card))); }
-.score { font-family: var(--serif); color: var(--link); }
-.explain { border-left-color: var(--gold); }
-.bar > i { background: linear-gradient(90deg, var(--primary), var(--gold)); }
-.badge.got { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, var(--card)); box-shadow: 0 0 10px -2px color-mix(in srgb, var(--gold) 60%, transparent); }
+/* ---------- Thème Parchemin (magie) ---------- */
+html[data-theme="parchemin"] body { background-image: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--gold) 12%, transparent) 0, transparent 38%), radial-gradient(circle at 92% 30%, color-mix(in srgb, var(--primary) 10%, transparent) 0, transparent 42%); background-attachment: fixed; }
+html[data-theme="parchemin"] .topbar { border-bottom: 2px solid var(--gold); background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--card)), var(--card)); }
+html[data-theme="parchemin"] .brand { font-family: var(--serif); letter-spacing: .02em; }
+html[data-theme="parchemin"] .logo { background: linear-gradient(135deg, #3b1d5e, #6b34a8); color: var(--gold) !important; border: 1px solid var(--gold); font-size: 1.05rem; }
+html[data-theme="parchemin"] nav a.active { background: var(--primary); box-shadow: inset 0 -2px 0 var(--gold); }
+html[data-theme="parchemin"] .card { border-color: color-mix(in srgb, var(--gold) 35%, var(--line)); box-shadow: 0 1px 0 color-mix(in srgb, var(--gold) 25%, transparent), 0 6px 18px -12px rgba(60, 30, 100, .35); }
+html[data-theme="parchemin"] button, html[data-theme="parchemin"] .btn { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--gold) 70%, transparent); }
+html[data-theme="parchemin"] button.ghost, html[data-theme="parchemin"] .btn.ghost, html[data-theme="parchemin"] button.danger, html[data-theme="parchemin"] .choice { box-shadow: none; }
+html[data-theme="parchemin"] .hero { background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--gold) 18%, var(--card)), var(--card) 65%); }
+html[data-theme="parchemin"] .hero .big { font-family: var(--serif); color: var(--link); text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 45%, transparent); }
+html[data-theme="parchemin"] .flash { font-family: var(--serif); border: 2px solid color-mix(in srgb, var(--gold) 55%, var(--line)); background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--gold) 8%, var(--card))); }
+html[data-theme="parchemin"] .score { font-family: var(--serif); color: var(--link); }
+html[data-theme="parchemin"] .explain { border-left-color: var(--gold); }
+html[data-theme="parchemin"] .bar > i { background: linear-gradient(90deg, var(--primary), var(--gold)); }
+html[data-theme="parchemin"] .badge.got { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, var(--card)); box-shadow: 0 0 10px -2px color-mix(in srgb, var(--gold) 60%, transparent); }
 .badge small { display: block; font-size: .7rem; color: var(--muted); line-height: 1.1; }
 .badge > b { font-family: var(--serif); font-size: .85rem; line-height: 1.15; display: block; }
-.sparkle::after { content: ' ✦'; color: var(--gold); }
-@media (prefers-reduced-motion: no-preference) { .hero .big { animation: glow 3.5s ease-in-out infinite alternate; } }
+html[data-theme="parchemin"] .sparkle::after { content: ' ✦'; color: var(--gold); }
+@media (prefers-reduced-motion: no-preference) { html[data-theme="parchemin"] .hero .big { animation: glow 3.5s ease-in-out infinite alternate; } }
 @keyframes glow { from { text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 25%, transparent); } to { text-shadow: 0 0 22px color-mix(in srgb, var(--gold) 65%, transparent); } }
 nav a { white-space: nowrap; }
 @media (min-width: 521px) { .brand .bt { display: inline; } }
@@ -156,3 +156,128 @@ details > summary { cursor: pointer; }
 .prep > .row.between { flex-wrap: nowrap; align-items: flex-start; }
 .prep > .row.between h2 { font-size: 1.02rem; }
 .prep > .row.between a { white-space: nowrap; }
+
+/* ---------- Fiche du joueur (commune) ---------- */
+.status { padding: 14px; }
+.st-head { display: flex; align-items: center; gap: 12px; }
+.st-av { font-size: 2.4rem; line-height: 1; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: var(--bg); border: 2px solid var(--gold); flex: none; }
+.st-id { flex: 1; min-width: 0; }
+.st-id b { display: block; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-id small, .st-lv small, .st-stats small { color: var(--muted); font-size: .75rem; }
+.st-rank { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 1.9rem; font-weight: 900; border-radius: 12px; border: 2px solid var(--gold); color: var(--gold); background: var(--bg); }
+.st-lv { display: flex; align-items: center; gap: 10px; margin: 12px 0 10px; }
+.st-lv b { white-space: nowrap; }
+.xpbar, .qbar { flex: 1; height: 10px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; display: block; }
+.xpbar > i, .qbar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--gold)); border-radius: 99px; transition: width .4s; }
+.st-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.st-stats span { text-align: center; padding: 8px 4px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+.st-stats small { display: block; }
+.st-stats b { font-size: 1.3rem; }
+.quest { border-top: 1px dashed var(--line); padding-top: 10px; }
+.qline { display: grid; grid-template-columns: 1fr 90px 3em; align-items: center; gap: 8px; margin-top: 6px; font-size: .9rem; }
+.qline small { color: var(--muted); text-align: right; }
+.quest.done .qbar > i { background: var(--ok); }
+@media (max-width: 420px) { .qline { grid-template-columns: 1fr 64px 2.6em; } }
+
+/* ---------- Thème Système : fenêtres bleu néon, niveaux et rangs ---------- */
+html[data-theme="systeme"] {
+  color-scheme: dark;
+  --bg: #060a14; --card: #0b1325; --text: #e4efff; --muted: #8ba3c9; --line: #1e3a6e;
+  --primary: #2b6fff; --primary-d: #1d56d6; --link: #6fc8ff; --gold: #4fd8ff; --ok: #3ddc97; --ko: #ff5470; --warn: #ffb347;
+  --radius: 6px; --serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+html[data-theme="systeme"] body {
+  background-image: radial-gradient(ellipse at 15% -10%, rgba(43, 111, 255, .28), transparent 55%), radial-gradient(ellipse at 100% 40%, rgba(79, 216, 255, .10), transparent 50%),
+    linear-gradient(rgba(79, 216, 255, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(79, 216, 255, .045) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px; background-attachment: fixed;
+}
+html[data-theme="systeme"] .topbar { background: rgba(6, 10, 20, .92); border-bottom: 1px solid var(--primary); box-shadow: 0 0 22px -4px rgba(43, 111, 255, .7); backdrop-filter: blur(6px); }
+html[data-theme="systeme"] .brand { letter-spacing: .12em; text-transform: uppercase; font-size: 1rem; }
+html[data-theme="systeme"] .logo { border-radius: 4px; background: transparent; border: 1px solid var(--gold); color: var(--gold) !important; box-shadow: 0 0 10px rgba(79, 216, 255, .6), inset 0 0 8px rgba(79, 216, 255, .3); }
+html[data-theme="systeme"] nav a.active { background: rgba(43, 111, 255, .22); color: var(--link); box-shadow: inset 0 -2px 0 var(--gold); border-radius: 4px; }
+html[data-theme="systeme"] h1, html[data-theme="systeme"] h2 { text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
+html[data-theme="systeme"] h1 { font-size: 1.35rem; color: #fff; text-shadow: 0 0 14px rgba(79, 216, 255, .55); }
+html[data-theme="systeme"] h2 { font-size: .95rem; color: var(--link); border-left: 3px solid var(--gold); padding-left: 8px; }
+html[data-theme="systeme"] .card { background: linear-gradient(180deg, rgba(43, 111, 255, .09), rgba(11, 19, 37, .96) 40%); border: 1px solid rgba(79, 216, 255, .35); box-shadow: 0 0 0 1px rgba(43, 111, 255, .12), 0 0 20px -8px rgba(43, 111, 255, .8), inset 0 1px 0 rgba(255, 255, 255, .05); }
+html[data-theme="systeme"] a.card:hover { border-color: var(--gold); box-shadow: 0 0 22px -4px rgba(79, 216, 255, .7); }
+html[data-theme="systeme"] button, html[data-theme="systeme"] .btn { border-radius: 4px; background: linear-gradient(180deg, #3a7dff, #1d56d6); text-transform: uppercase; letter-spacing: .06em; font-size: .85rem; box-shadow: 0 0 14px -2px rgba(43, 111, 255, .85); }
+html[data-theme="systeme"] button:hover, html[data-theme="systeme"] .btn:hover { background: linear-gradient(180deg, #5591ff, #2b6fff); }
+html[data-theme="systeme"] button.ghost, html[data-theme="systeme"] .btn.ghost, html[data-theme="systeme"] button.danger, html[data-theme="systeme"] .choice { background: transparent; box-shadow: none; }
+html[data-theme="systeme"] button.ghost, html[data-theme="systeme"] .btn.ghost { border-color: rgba(79, 216, 255, .5); color: var(--link); }
+html[data-theme="systeme"] button.ok { background: var(--ok); color: #04210f; } html[data-theme="systeme"] button.ko { background: var(--ko); }
+html[data-theme="systeme"] input, html[data-theme="systeme"] select, html[data-theme="systeme"] textarea { background: #050a16; border-color: var(--line); border-radius: 4px; }
+html[data-theme="systeme"] input:focus, html[data-theme="systeme"] select:focus, html[data-theme="systeme"] textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 10px rgba(79, 216, 255, .5); }
+html[data-theme="systeme"] .hero { background: radial-gradient(circle at 50% 0, rgba(43, 111, 255, .35), var(--card) 70%); }
+html[data-theme="systeme"] .hero .big { color: #fff; text-shadow: 0 0 18px rgba(79, 216, 255, .9); }
+html[data-theme="systeme"] .flash { border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(43, 111, 255, .14), var(--card)); box-shadow: 0 0 26px -6px rgba(79, 216, 255, .7); }
+html[data-theme="systeme"] .score { color: var(--gold); text-shadow: 0 0 16px rgba(79, 216, 255, .8); }
+html[data-theme="systeme"] .explain { border-left-color: var(--gold); }
+html[data-theme="systeme"] .badge { border-radius: 4px; }
+html[data-theme="systeme"] .badge.got { border-color: var(--gold); background: rgba(79, 216, 255, .12); box-shadow: 0 0 12px -2px rgba(79, 216, 255, .7); }
+html[data-theme="systeme"] .chip { border-radius: 4px; }
+html[data-theme="systeme"] .st-av, html[data-theme="systeme"] .st-stats span { border-radius: 4px; }
+html[data-theme="systeme"] .st-rank { border-radius: 4px; color: #fff; background: radial-gradient(circle, rgba(79, 216, 255, .45), rgba(43, 111, 255, .15)); text-shadow: 0 0 12px var(--gold); box-shadow: 0 0 18px rgba(79, 216, 255, .6), inset 0 0 12px rgba(79, 216, 255, .35); }
+html[data-theme="systeme"] .xpbar > i, html[data-theme="systeme"] .qbar > i { background: linear-gradient(90deg, #2b6fff, #4fd8ff); box-shadow: 0 0 10px rgba(79, 216, 255, .9); }
+html[data-theme="systeme"] .status { border-color: var(--gold); box-shadow: 0 0 26px -6px rgba(79, 216, 255, .75), inset 0 0 22px -12px rgba(79, 216, 255, .6); }
+html[data-theme="systeme"] .status::before { content: "[ STATUT ]"; display: block; text-align: center; font-size: .7rem; letter-spacing: .35em; color: var(--gold); margin: -4px 0 10px; text-shadow: 0 0 8px var(--gold); }
+html[data-theme="systeme"] .toast { background: #0b1325; color: #fff; border: 1px solid var(--gold); box-shadow: 0 0 20px rgba(79, 216, 255, .6); }
+@media (prefers-reduced-motion: no-preference) { html[data-theme="systeme"] .st-rank { animation: pulse 3s ease-in-out infinite alternate; } }
+@keyframes pulse { from { box-shadow: 0 0 8px rgba(79, 216, 255, .4), inset 0 0 8px rgba(79, 216, 255, .2); } to { box-shadow: 0 0 24px rgba(79, 216, 255, .85), inset 0 0 14px rgba(79, 216, 255, .45); } }
+
+/* ---------- Thème Anime : manga coloré, contours épais ---------- */
+html[data-theme="anime"] {
+  color-scheme: light;
+  --ink: #1d1740; --bg: #fff4d6; --card: #ffffff; --text: #1d1740; --muted: #5d5683; --line: #1d1740;
+  --primary: #ff4f9a; --primary-d: #e63a86; --link: #d11f78; --gold: #ffc61a; --ok: #12a05c; --ko: #e5334b; --warn: #e07a00;
+  --radius: 16px; --serif: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+html[data-theme="anime"] body {
+  background-image: radial-gradient(rgba(255, 79, 154, .22) 1.6px, transparent 1.8px), linear-gradient(180deg, #ffe9a8 0, transparent 220px);
+  background-size: 14px 14px, auto; background-attachment: fixed;
+}
+html[data-theme="anime"] .topbar { background: var(--primary); border-bottom: 3px solid var(--ink); }
+html[data-theme="anime"] .brand { color: #fff; font-style: italic; font-weight: 900; text-shadow: 2px 2px 0 var(--ink); letter-spacing: .02em; }
+html[data-theme="anime"] .logo { background: var(--gold); color: var(--ink) !important; border: 2.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink); }
+html[data-theme="anime"] nav a { color: #fff; font-weight: 700; }
+html[data-theme="anime"] nav a.active { background: var(--gold); color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+html[data-theme="anime"] h1, html[data-theme="anime"] h2 { font-weight: 900; font-style: italic; color: var(--ink); }
+html[data-theme="anime"] h1 { font-size: 1.7rem; text-shadow: 3px 3px 0 var(--gold); }
+html[data-theme="anime"] h2 { display: inline-block; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 10px; padding: 2px 12px; font-size: 1rem; box-shadow: 3px 3px 0 var(--ink); transform: rotate(-1deg); }
+html[data-theme="anime"] .row.between h2, html[data-theme="anime"] h2 .muted { color: var(--ink); }
+html[data-theme="anime"] .card { border: 2.5px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+html[data-theme="anime"] a.card:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--ink); border-color: var(--ink); }
+html[data-theme="anime"] button, html[data-theme="anime"] .btn { border: 2.5px solid var(--ink); border-radius: 12px; box-shadow: 3px 3px 0 var(--ink); font-weight: 800; transition: transform .08s, box-shadow .08s; }
+html[data-theme="anime"] button:hover, html[data-theme="anime"] .btn:hover { background: var(--primary-d); }
+html[data-theme="anime"] button:active, html[data-theme="anime"] .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+html[data-theme="anime"] button.ghost, html[data-theme="anime"] .btn.ghost, html[data-theme="anime"] button.danger { background: #fff; color: var(--ink); border-color: var(--ink); }
+html[data-theme="anime"] button.danger { color: var(--ko); }
+html[data-theme="anime"] button.ok { background: var(--ok); } html[data-theme="anime"] button.ko { background: var(--ko); }
+html[data-theme="anime"] .choice { border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); background: #fff; color: var(--ink); }
+html[data-theme="anime"] input, html[data-theme="anime"] select, html[data-theme="anime"] textarea { border: 2.5px solid var(--ink); background: #fff; color: var(--ink); border-radius: 12px; }
+html[data-theme="anime"] .hero { background: repeating-conic-gradient(from 0deg at 50% 38%, #fff3b8 0 7deg, #ffffff 7deg 14deg); }
+html[data-theme="anime"] .hero .big { color: var(--primary); font-style: italic; font-weight: 900; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); }
+html[data-theme="anime"] .flash { border: 3px solid var(--ink); background: #fff; box-shadow: 5px 5px 0 var(--ink); }
+html[data-theme="anime"] .flash .a { color: var(--primary-d); }
+html[data-theme="anime"] .score { color: var(--primary); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--ink); font-style: italic; }
+html[data-theme="anime"] .explain { border-left-color: var(--primary); background: #fff0f7; color: var(--ink); }
+html[data-theme="anime"] .bar, html[data-theme="anime"] .xpbar, html[data-theme="anime"] .qbar { border: 2px solid var(--ink); background: #fff; }
+html[data-theme="anime"] .bar > i, html[data-theme="anime"] .xpbar > i, html[data-theme="anime"] .qbar > i { background: repeating-linear-gradient(45deg, var(--primary) 0 8px, #ff86bb 8px 16px); }
+html[data-theme="anime"] .badge { border: 2px dashed var(--ink); background: #fff; color: var(--ink); }
+html[data-theme="anime"] .badge.got { border: 2.5px solid var(--ink); background: var(--gold); box-shadow: 2px 2px 0 var(--ink); }
+html[data-theme="anime"] .badge small { color: var(--ink); opacity: .75; }
+html[data-theme="anime"] .chip { border: 2px solid var(--ink); background: #fff; }
+html[data-theme="anime"] .tile .ico { filter: drop-shadow(2px 2px 0 var(--ink)); }
+html[data-theme="anime"] .st-av { border: 2.5px solid var(--ink); border-radius: 50%; background: #c9f0ff; box-shadow: 3px 3px 0 var(--ink); }
+html[data-theme="anime"] .st-rank { border: 2.5px solid var(--ink); background: var(--gold); color: var(--ink); transform: rotate(6deg); box-shadow: 3px 3px 0 var(--ink); border-radius: 12px; font-style: italic; }
+html[data-theme="anime"] .st-stats span { border: 2px solid var(--ink); background: #fff7d1; }
+html[data-theme="anime"] .status { background: #fff; position: relative; overflow: hidden; }
+html[data-theme="anime"] .status::after { content: "頑張れ"; position: absolute; right: 8px; bottom: 4px; font-size: 2.2rem; font-weight: 900; color: var(--primary); opacity: .09; pointer-events: none; letter-spacing: .1em; }
+html[data-theme="anime"] .quest { border-top: 2px dashed var(--ink); }
+html[data-theme="anime"] .toast { background: var(--gold); color: var(--ink); border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-weight: 800; }
+html[data-theme="anime"] .prep { border-color: var(--ink); }
+html[data-theme="anime"] .wd { border: 2px solid var(--ink); background: #fff; }
+html[data-theme="anime"] .wd.prep { background: #ffe27a; border-color: var(--ink); }
+html[data-theme="anime"] .av { border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); background: #fff; }
+html[data-theme="anime"] .av.on { background: var(--gold); }
+html[data-theme="anime"] a { font-weight: 600; }
+html[data-theme="anime"] .muted { color: var(--muted); }
