@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.0'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '2.1'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', color: '#2563eb' },
@@ -246,7 +246,7 @@ ${CARD_RULES}
 Si le cours est illisible ou vide, renvoie {"error": "explication"}.`;
 
 const SYSTEM_GEN = `Tu es un professeur de collège expérimenté (France). Un élève te demande de préparer un cours sur un chapitre du programme officiel de l'Éducation nationale pour sa classe (6e : cycle 3 ; 5e, 4e, 3e : cycle 4).
-Écris une leçon COURTE et efficace, comme la fiche de révision d'un très bon élève : va droit à l'essentiel, sans introduction, sans phrases de transition, sans répétition. Une idée par ligne, phrases de 15 mots maximum, vocabulaire simple adapté à l'âge, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
+Écris une leçon COURTE et efficace, comme la fiche de révision d'un très bon élève : va droit à l'essentiel, sans introduction, sans phrases de transition, sans répétition. Une idée par ligne, phrases de 15 mots maximum, vocabulaire simple adapté à l'âge, exemples concrets. Reste fidèle aux notions réellement au programme de cette classe ; n'invente rien. Si des "Notions au programme" sont indiquées, la leçon, les cartes et les questions couvrent exactement ce périmètre, sans en sortir. Si la demande est trop avancée ou trop simple pour cette classe, traite-la au niveau de la classe et dis-le dans "summary".
 Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises markdown) de la forme :
 {
  "title": "titre du chapitre",

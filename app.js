@@ -101,23 +101,55 @@ function viewGenerate() {
       <label>Classe</label>
       <select id="level">${LEVELS.map(l => `<option ${l === lvl ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <label>Matière</label>
-      <select id="subject">${Object.entries(SUBJECTS).filter(([k]) => k !== 'autre').map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
-      <label>Chapitre ou notion</label>
-      <input id="chapter" placeholder="Ex. Conjugaison : le passé simple" autocomplete="off">
+      <select id="subject"></select>
+      <label>Chapitre du programme</label>
+      <select id="chsel"></select>
+      <div id="notions" class="muted" style="margin-top:6px"></div>
+      <div id="freebox" hidden>
+        <label>Ton chapitre ou ta notion</label>
+        <input id="chapter" placeholder="Ex. Conjugaison : le passé simple" autocomplete="off">
+      </div>
       <label>Précisions (facultatif)</label>
       <input id="extra" placeholder="Ex. surtout les verbes du 1er groupe" autocomplete="off">
+      <div class="muted" style="margin-top:6px">Les chapitres suivent les programmes officiels ; l'ordre peut différer de celui de ta classe. Ton chapitre n'y est pas ? Choisis « Autre chapitre… ».</div>
       <div class="row" style="margin-top:14px"><button id="go" type="submit">Préparer mon cours</button><span id="st"></span></div>
     </form>`;
-  document.getElementById('f').onsubmit = async ev => {
+  const $ = id => document.getElementById(id);
+  const FREE = '__free';
+  const fillSubjects = () => {
+    const level = $('level').value, keep = $('subject').value;
+    const inCat = catalogSubjects(level);
+    const keys = Object.keys(SUBJECTS).filter(k => k !== 'autre');
+    $('subject').innerHTML = keys.map(k => `<option value="${k}">${esc(SUBJECTS[k].label)}</option>`).join('');
+    const pick = keys.includes(keep) ? keep : (inCat[0] || keys[0]);
+    $('subject').value = pick;
+  };
+  const fillChapters = () => {
+    const list = chaptersFor($('level').value, $('subject').value);
+    $('chsel').innerHTML = list.map((c, i) => `<option value="${i}">${esc(c[0])}</option>`).join('') + `<option value="${FREE}">Autre chapitre…</option>`;
+    if (!list.length) $('chsel').value = FREE;
+    showNotions();
+  };
+  const showNotions = () => {
+    const list = chaptersFor($('level').value, $('subject').value), v = $('chsel').value, free = v === FREE;
+    $('freebox').hidden = !free;
+    $('notions').innerHTML = !free && list[+v] ? `<b>Au programme :</b> ${esc(list[+v][1])}` : '';
+  };
+  $('level').onchange = () => { fillSubjects(); fillChapters(); };
+  $('subject').onchange = fillChapters;
+  $('chsel').onchange = showNotions;
+  fillSubjects(); fillChapters();
+  $('f').onsubmit = async ev => {
     ev.preventDefault();
-    const level = document.getElementById('level').value, subject = document.getElementById('subject').value;
-    const chapter = document.getElementById('chapter').value.trim(), extra = document.getElementById('extra').value.trim();
+    const level = $('level').value, subject = $('subject').value;
+    const list = chaptersFor(level, subject), v = $('chsel').value, entry = v === FREE ? null : list[+v];
+    const chapter = entry ? entry[0] : $('chapter').value.trim(), extra = $('extra').value.trim();
     if (chapter.length < 3) return toast('Indique le chapitre à réviser.');
     db.settings.level = level; save();
-    const btn = document.getElementById('go'), st = document.getElementById('st');
+    const btn = $('go'), st = $('st');
     btn.disabled = true; st.innerHTML = '<span class="spinner"></span> Préparation du cours… (≈ 30-60 s)';
     try {
-      const text = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${extra ? `\nPrécisions : ${extra}` : ''}`;
+      const text = `Classe : ${level}\nMatière : ${subj(subject).label}\nChapitre demandé : ${chapter}${entry ? `\nNotions au programme de ce chapitre (reste dans ce périmètre) : ${entry[1]}` : ''}${extra ? `\nPrécisions : ${extra}` : ''}`;
       const r = await callClaude([{ type: 'text', text }], 8000, SYSTEM_GEN);
       const course = {
         id: uid(), subject, level, origin: 'generated', title: r.title || chapter, createdAt: Date.now(),
