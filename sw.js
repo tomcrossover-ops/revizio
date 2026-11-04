@@ -1,4 +1,4 @@
-const VERSION = '3.12'; // à garder identique à APP_VERSION dans app.js
+const VERSION = '3.13'; // à garder identique à APP_VERSION dans app.js
 const CACHE = 'revizio-' + VERSION;
 const ASSETS = ['./', 'index.html', 'styles.css', 'core.js', 'theme.js', 'speech.js', 'ai.js', 'catalog.js', 'learn.js', 'exercise.js', 'cards.js', 'session.js', 'pack.js', 'chapter.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'fonts/TwemojiCountryFlags.woff2'];
 

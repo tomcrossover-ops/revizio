@@ -426,7 +426,7 @@ function viewQuiz(id, mode) {
     $app.innerHTML = `
       <div class="row between"><span class="muted">${mode === 'weak' ? 'Quiz ciblé · ' : mode === 'missed' ? 'Questions ratées · ' : mini ? 'Mini-quiz · ' : 'Bilan de compétence · '}Question ${i + 1} / ${qs.length}</span>${subjChip(qc.subject)}</div>
       <div class="bar" style="margin:8px 0"><i style="width:${i / qs.length * 100}%"></i></div>
-      <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${EX_LABEL[q.type] || ''} ${levelDots(q)}</div></div><div id="body"></div>`;
+      <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${exLabel(q)} ${levelDots(q)}</div></div><div id="body"></div>`;
     const body = document.getElementById('body');
     const finish = ok => {
       if (ok) score++;
@@ -496,6 +496,7 @@ function viewSettings() {
       <select id="model">${P.models.map(([v, l]) => `<option value="${v}" ${s.model === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}<option value="__custom" ${custom ? 'selected' : ''}>Autre (saisir le nom)…</option></select>
       <input id="modelCustom" placeholder="Nom exact du modèle" value="${custom ? esc(s.model) : ''}" ${custom ? '' : 'hidden'} autocomplete="off" style="margin-top:6px">
       <label class="check"><input type="checkbox" id="bonus" ${s.bonus !== false ? 'checked' : ''}> Poser une question « pourquoi ? / exemple ? » après une bonne réponse</label>
+      <label class="check"><input type="checkbox" id="micro" ${s.micro ? 'checked' : ''}> Activer le micro pour les exercices de prononciation <span class="muted">(facultatif : ton navigateur écoute et transcrit ta voix, parfois via le service de reconnaissance vocale de son éditeur. Rien n'est enregistré par Révizio.)</span></label>
       <div class="row" style="margin-top:14px"><button type="submit">Enregistrer</button><button type="button" class="ghost" id="test">Tester la clé</button><span id="st"></span></div>
     </form>
     <h2>Mises à jour</h2>
@@ -519,7 +520,7 @@ function viewSettings() {
   sel.onchange = () => { cm.hidden = sel.value !== '__custom'; if (!cm.hidden) cm.focus(); };
   const read = () => {
     s.name = document.getElementById('name').value.trim(); s.apiKey = document.getElementById('key').value.trim();
-    s.model = sel.value === '__custom' ? (cm.value.trim() || P.models[0][0]) : sel.value; s.bonus = document.getElementById('bonus').checked; save(); syncAiUi();
+    s.model = sel.value === '__custom' ? (cm.value.trim() || P.models[0][0]) : sel.value; s.bonus = document.getElementById('bonus').checked; s.micro = document.getElementById('micro').checked; save(); syncAiUi();
   };
   document.getElementById('theme').onchange = ev => { s.theme = ev.target.value; save(); applyTheme(); toast('Apparence changée ✔'); };
   document.getElementById('provider').onchange = ev => { read(); switchProvider(ev.target.value); save(); viewSettings(); };
@@ -605,3 +606,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && swReg) swReg.update().catch(() => {}); });
 }
 route();
+enrichAudio().then(n => { if (n) toast('🎧 Exercices d\'écoute ajoutés à tes chapitres de langues'); }).catch(() => {}); // hors ligne : on réessaiera au prochain démarrage

@@ -335,3 +335,5 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .sayrow { white-space: nowrap; margin-left: 8px; }
 button.say { padding: 2px 8px; margin-left: 4px; background: transparent; color: var(--link); border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; line-height: 1.4; font-weight: 400; }
 button.say:hover { background: var(--bg); }
+.repete .phrase { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+.sayafter { margin-top: 10px; }

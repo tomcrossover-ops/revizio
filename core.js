@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.12'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.13'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -50,6 +50,8 @@ const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const today = () => ymd(new Date());
 /* Rappel de sauvegarde : seulement s'il y a de quoi perdre, et pas plus d'une fois par semaine si on repousse. */
+const SPEECH_LANG = { langues: 'en-GB', italien: 'it-IT', vietnamien: 'vi-VN' };
+const SPEECH_LANGS = Object.values(SPEECH_LANG);
 const BACKUP_EVERY_DAYS = 14, BACKUP_SNOOZE_DAYS = 7;
 function backupDue(now = Date.now()) {
   const s = db.settings, DAY = 864e5;
@@ -63,9 +65,10 @@ const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', m
 const freshState = () => ({ step: 0, due: today(), lapses: 0 });
 function migrate(d) {
   d = d && typeof d === 'object' ? d : {};
-  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🥷', theme: 'systeme', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true, lastBackup: 0, backupSnooze: 0 }, d.settings || {});
+  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🥷', theme: 'systeme', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true, lastBackup: 0, backupSnooze: 0, micro: false }, d.settings || {});
   if (!d.settings.schedule || typeof d.settings.schedule !== 'object') d.settings.schedule = {};
   d.courses = Array.isArray(d.courses) ? d.courses : [];
+  d.courses.forEach(c => { const L = SPEECH_LANG[c && c.subject]; if (L && Array.isArray(c.questions)) c.questions.forEach(q => { if (q && !q.lang) q.lang = L; }); }); // questions de langue : langue de lecture
   d.cards = Array.isArray(d.cards) ? d.cards : [];
   d.decks = Array.isArray(d.decks) ? d.decks : [];
   d.activity = d.activity && Array.isArray(d.activity.days) ? d.activity : { days: [] };
@@ -371,6 +374,7 @@ function normQuestions(list) {
     const meta = { skill: q.skill ? clip(String(q.skill), 40) : '', pitfall: q.pitfall ? clip(String(q.pitfall), 160) : '' };
     if (q.hint) meta.hint = clip(String(q.hint), 120);
     if (lv >= 1 && lv <= 3) meta.level = lv;
+    if (SPEECH_LANGS.includes(q.lang)) { meta.lang = q.lang; if (typeof q.audio === 'string' && q.audio.trim()) { meta.audio = clip(q.audio.trim(), 120); if (q.ecoute) meta.ecoute = true; } }
     const accept = Array.isArray(q.accept) ? q.accept.map(x => clip(String(x), 60)).filter(Boolean).slice(0, 4) : [];
     const expl = q.explanation || '';
     if (q.type === 'qcm' && Array.isArray(q.choices) && q.choices.length >= 2) {
@@ -387,6 +391,7 @@ function normQuestions(list) {
       const items = q.items.map(x => clip(String(x), 60)).filter(Boolean).slice(0, 6);
       return items.length >= 3 && new Set(items).size === items.length ? { id: uid(), type: 'ordre', q: q.q, items, explanation: expl, ...meta } : null;
     }
+    if (q.type === 'repete' && meta.audio) return { id: uid(), type: 'repete', q: q.q, answer: meta.audio, explanation: expl, ...meta };
     if (q.type === 'calcul' && q.answer !== undefined && q.answer !== null && Number.isFinite(Number(String(q.answer).replace(',', '.').replace(/\s/g, '')))) return { id: uid(), type: 'calcul', q: q.q, answer: String(q.answer), explanation: expl, ...meta };
     if (q.type === 'trous' && q.answer && /_{2,}/.test(q.q)) return { id: uid(), type: 'trous', q: q.q, answer: String(q.answer), accept, explanation: expl, ...meta };
     if ((q.type === 'short' || q.type === 'trous' || q.type === 'calcul') && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), ...(accept.length ? { accept } : {}), explanation: expl, ...meta };

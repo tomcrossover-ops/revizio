@@ -3,8 +3,15 @@
 
 const $app = document.getElementById('app');
 const sideHtml = s => (safeImg(s.image) ? `<img class="cimg" src="${safeImg(s.image)}" alt="">` : '') + (s.text ? `<div>${esc(s.text)}</div>` : '') + (s.say ? sayBtns(s.say, s.subject) : '');
+/* Recto : si la question contient un mot étranger connu (seul ou entre « »), on peut l'écouter dès le recto. */
+function frontSay(card) {
+  const lang = SPEECH_LANG[card.subject]; if (!lang) return '';
+  const whole = lexFind(card.front, lang); if (whole) return whole.text;
+  const m = /«([^»]{1,60})»/.exec(card.front), hit = m && lexFind(m[1], lang);
+  return hit ? hit.text : '';
+}
 function sides(card, dir) {
-  const f = { text: card.front, image: card.image }, b = { text: card.back, image: null, say: sayText(card), subject: card.subject };
+  const f = { text: card.front, image: card.image, say: frontSay(card), subject: card.subject }, b = { text: card.back, image: null, say: sayText(card), subject: card.subject };
   return dir === 'fwd' ? { q: f, a: b } : { q: b, a: f };
 }
 const BONUS = ['Pourquoi ? Explique avec tes mots.', 'Donne un exemple.', 'À quoi cela sert-il ?'];

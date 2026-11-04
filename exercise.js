@@ -3,7 +3,8 @@
    renderExercise(q, body, done) dessine l'exercice dans `body` et appelle done(ok, {tries, hint}) quand l'élève a fini. */
 'use strict';
 
-const EX_LABEL = { qcm: 'QCM', short: 'Réponse courte', trous: 'Texte à trous', calcul: 'Calcul mental', assoc: 'Association', ordre: 'Classement' };
+const EX_LABEL = { qcm: 'QCM', short: 'Réponse courte', trous: 'Texte à trous', calcul: 'Calcul mental', assoc: 'Association', ordre: 'Classement', repete: 'Prononciation' };
+const exLabel = q => (q.ecoute ? '🎧 Écoute · ' : '') + (EX_LABEL[q.type] || '');
 const EX_TRIES = 2; // tentatives pour les réponses saisies, l'association et le classement
 
 /* ---------- Comparaison de réponses ---------- */
@@ -51,7 +52,25 @@ function hintOf(q) {
   return '';
 }
 /* Énoncé : les trous « ___ » sont mis en évidence */
-const qHtml = q => esc(q.q).replace(/_{2,}/g, '<span class="blank">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>');
+/* Mots étrangers connus (cartes avec « say » + questions d'écoute) : un texte entre « » qui en fait partie reçoit ses boutons d'écoute. */
+let lexCache = { key: '', map: new Map() };
+function foreignLex() {
+  const key = db.cards.length + '|' + db.courses.length;
+  if (lexCache.key === key) return lexCache.map;
+  const map = new Map();
+  db.cards.forEach(c => { const t = SPEECH_LANG[c.subject] && sayText(c); if (t) map.set(c.subject + '|' + normText(t), { text: t, lang: SPEECH_LANG[c.subject] }); });
+  lexCache = { key, map };
+  return map;
+}
+const langSubject = lang => Object.keys(SPEECH_LANG).find(k => SPEECH_LANG[k] === lang) || '';
+function lexFind(text, lang) { const n = normText(text); return n ? foreignLex().get(langSubject(lang) + '|' + n) || null : null; }
+function qHtml(q) {
+  const html = String(q.q).split(/(«[^»]{1,60}»)/).map(part => {
+    if (part[0] === '«' && q.lang) { const hit = lexFind(part.slice(1, -1), q.lang); return esc(part) + (hit ? sayBtnsLang(hit.text, hit.lang) : ''); }
+    return esc(part).replace(/_{2,}/g, '<span class="blank">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>');
+  }).join('');
+  return html + (q.ecoute && q.audio ? ' ' + sayBtnsLang(q.audio, q.lang, true) : '');
+}
 const levelDots = q => (q.level ? `<span class="muted" title="Difficulté" aria-label="Difficulté ${q.level} sur 3">${'●'.repeat(q.level)}${'○'.repeat(3 - q.level)}</span>` : '');
 /* Réponse attendue, en texte (corrections, cartes d'erreurs) */
 function answerText(q) {
@@ -64,7 +83,15 @@ function answerText(q) {
 /* ---------- Dessin d'un exercice ---------- */
 function renderExercise(q, body, done) {
   let tries = 0, hinted = false, over = false;
-  const end = ok => { if (over) return; over = true; done(ok, { tries, hint: hinted }); };
+  const end = ok => {
+    if (over) return; over = true;
+    if (q.lang && q.type !== 'repete') { // après la réponse : écouter la bonne réponse dans la langue
+      const t = q.audio || (() => { const a = q.type === 'qcm' ? q.choices[q.answer] : q.type === 'short' || q.type === 'trous' ? q.answer : ''; const h = a && lexFind(a, q.lang); return h ? h.text : ''; })();
+      const b = t && sayBtnsLang(t, q.lang);
+      if (b) body.insertAdjacentHTML('beforeend', `<div class="sayafter muted">Écoute la bonne réponse ${b}</div>`);
+    }
+    done(ok, { tries, hint: hinted });
+  };
   const hint = hintOf(q);
   const hintBox = document.createElement('div');
   const addHint = () => {
@@ -75,6 +102,30 @@ function renderExercise(q, body, done) {
   };
   const retry = msg => { const n = body.querySelector('#fb'); if (n) n.innerHTML = `<span class="soft">${msg}</span>`; };
   const failMsg = '<span class="soft">Pas tout à fait. Essaie encore, tu peux t\'aider de l\'indice.</span>';
+
+  /* --- Prononciation : écouter, répéter à voix haute, se juger (micro facultatif) --- */
+  if (q.type === 'repete') {
+    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition), mic = !!(SR && db.settings.micro);
+    body.innerHTML = `<div class="card repete"><div class="phrase">${esc(q.answer)}</div>${sayBtnsLang(q.answer, q.lang) || '<div class="muted">Lecture à voix haute indisponible ici.</div>'}</div>
+      ${mic ? '<button type="button" class="ghost" id="mic" style="width:100%;margin-bottom:8px">🎤 Je répète (le micro écoute)</button>' : ''}
+      <div id="fb" class="fb" role="status"></div><div class="muted" style="margin:6px 0">Écoute, répète à voix haute, puis juge-toi honnêtement.</div>
+      <div class="row"><button class="ko" id="no" style="flex:1">À retravailler</button><button class="ok" id="yes" style="flex:1">Bien dit</button></div>`;
+    const fb = body.querySelector('#fb'), mark = ok => { body.querySelectorAll('button').forEach(b => { b.disabled = true; }); tries = 1; end(ok); };
+    body.querySelector('#yes').onclick = () => mark(true); body.querySelector('#no').onclick = () => mark(false);
+    if (mic) body.querySelector('#mic').onclick = () => {
+      let r; try { r = new SR(); } catch (e) { fb.innerHTML = '<span class="soft">Micro indisponible ici.</span>'; return; }
+      r.lang = q.lang; r.interimResults = false; r.maxAlternatives = 3;
+      fb.innerHTML = '<span class="soft">Je t\'écoute… parle maintenant.</span>';
+      r.onresult = ev => {
+        const heard = [...ev.results[0]].map(a => a.transcript), want = normText(q.answer).split(' ').filter(Boolean);
+        const best = Math.max(...heard.map(h => { const w = new Set(normText(h).split(' ')); return want.length ? want.filter(x => w.has(x)).length / want.length : 0; }));
+        fb.innerHTML = `<div class="card"><div class="muted">J'ai entendu</div><b>${esc(heard[0])}</b><div style="margin-top:6px">${best >= 0.8 ? '<span class="okmsg">✔ Très proche !</span>' : best >= 0.5 ? '<span class="soft">Presque. Réécoute et recommence.</span>' : '<span class="soft">Pas tout à fait. Réécoute puis réessaie (la reconnaissance se trompe aussi parfois).</span>'}</div></div>`;
+      };
+      r.onerror = ev => { fb.innerHTML = `<span class="soft">${ev.error === 'not-allowed' || ev.error === 'service-not-allowed' ? 'Micro refusé : autorise-le dans le navigateur, ou juge-toi sans micro.' : 'Je n\'ai rien entendu. Réessaie, ou juge-toi sans micro.'}</span>`; };
+      try { r.start(); } catch (e) { /* déjà en cours */ }
+    };
+    return;
+  }
 
   /* --- QCM / vrai-faux : un seul essai --- */
   if (q.type === 'qcm') {

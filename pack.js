@@ -90,6 +90,28 @@ async function autoImportReady(level, subject) {
   done[key] = [...seen]; save();
   return tot;
 }
+/* Chapitres de langue déjà importés avant les exercices d'écoute : on leur ajoute (une seule fois) les questions d'écoute / dictée /
+   prononciation du pack, et le texte à lire des cartes. Rien n'est supprimé ni modifié d'autre. Retourne le nombre de questions ajoutées. */
+async function enrichAudio() {
+  const todo = db.courses.filter(c => c.origin === 'pack' && SPEECH_LANG[c.subject] && !c.audioV);
+  if (!todo.length) return 0;
+  const idx = await loadPackIndex(); if (!idx.length) return 0;
+  const files = {}; let n = 0;
+  for (const c of todo) {
+    const p = idx.find(x => x.level === c.level && x.subject === c.subject && x.chapters.includes(c.catalogTitle));
+    const data = p && (files[p.file] = files[p.file] || await fetchPack(p.file));
+    const raw = data && data.courses.find(r => sameChapter(c, r));
+    if (raw) {
+      const have = new Set(c.questions.map(questionKey));
+      normQuestions(raw.questions).filter(q => q.audio).forEach(q => { const k = questionKey(q); if (!have.has(k)) { have.add(k); c.questions.push(q); n++; } });
+      const say = new Map((raw.cards || []).filter(x => typeof x.say === 'string' && x.say).map(x => [normText(x.q), x.say]));
+      db.cards.forEach(k => { if (k.courseId === c.id && k.say == null && say.has(normText(k.front))) k.say = say.get(normText(k.front)); });
+    }
+    c.audioV = 1;
+  }
+  save();
+  return n;
+}
 /* Réglages : packs fournis + import d'un fichier */
 async function packSettingsHtml() {
   const idx = await loadPackIndex();

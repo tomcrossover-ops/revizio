@@ -2,7 +2,6 @@
    Les voix viennent de l'appareil : si l'italien ou le vietnamien manque, il faut l'ajouter dans les réglages de voix du système. */
 'use strict';
 
-const SPEECH_LANG = { langues: 'en-GB', italien: 'it-IT', vietnamien: 'vi-VN' };
 const SPEECH_NAME = { en: "d'anglais", it: "d'italien", vi: 'de vietnamien' };
 const speechOK = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
 
@@ -38,11 +37,12 @@ function speak(text, lang, slow) {
   return true;
 }
 /* Deux petits boutons : lecture normale et lecture lente. */
-function sayBtns(text, subject) {
-  const lang = SPEECH_LANG[subject]; if (!lang || !text || !speechOK()) return '';
-  const a = `data-say="${esc(text)}" data-lang="${lang}"`;
-  return `<span class="sayrow"><button type="button" class="say" ${a} aria-label="Écouter : ${esc(text)}">🔊</button><button type="button" class="say" ${a} data-slow="1" aria-label="Écouter lentement : ${esc(text)}">🐢</button></span>`;
+function sayBtnsLang(text, lang, hide) {
+  if (!lang || !text || !speechOK()) return '';
+  const a = `data-say="${esc(text)}" data-lang="${lang}"`, n1 = hide ? "Écouter l'enregistrement" : `Écouter : ${esc(text)}`, n2 = hide ? "Écouter l'enregistrement lentement" : `Écouter lentement : ${esc(text)}`;
+  return `<span class="sayrow"><button type="button" class="say" ${a} aria-label="${n1}">🔊</button><button type="button" class="say" ${a} data-slow="1" aria-label="${n2}">🐢</button></span>`;
 }
+const sayBtns = (text, subject) => sayBtnsLang(text, SPEECH_LANG[subject]);
 if (typeof document !== 'undefined') {
   document.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('button.say[data-say]');

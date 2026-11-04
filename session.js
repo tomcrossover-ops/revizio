@@ -156,7 +156,7 @@ function viewSession() {
   /* --- exercice --- */
   const exStep = st => {
     const { q, c } = st;
-    $app.innerHTML = `${head(st)}<div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${EX_LABEL[q.type] || ''} ${levelDots(q)}${st.isNew ? ' · sur la notion qui vient d\'être vue' : ''}</div></div><div id="body"></div>`;
+    $app.innerHTML = `${head(st)}<div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${exLabel(q)} ${levelDots(q)}${st.isNew ? ' · sur la notion qui vient d\'être vue' : ''}</div></div><div id="body"></div>`;
     const body = document.getElementById('body');
     renderExercise(q, body, ok => {
       exResults.push({ q, c, ok });

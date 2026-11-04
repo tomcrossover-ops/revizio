@@ -157,7 +157,7 @@ function viewTrain(id, mode) {
       <div class="row between"><span class="muted">${title} · ${i + 1} / ${qs.length}</span><span class="chip">Sans note</span></div>
       <div class="bar" style="margin:8px 0"><i style="width:${i / qs.length * 100}%"></i></div>
       ${target ? remediationNote(c, q) : ''}
-      <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${EX_LABEL[q.type] || ''} ${levelDots(q)}</div></div><div id="body"></div>`;
+      <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${exLabel(q)} ${levelDots(q)}</div></div><div id="body"></div>`;
     const body = document.getElementById('body');
     renderExercise(q, body, ok => {
       results.push({ q, c, ok });
