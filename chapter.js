@@ -19,24 +19,14 @@ function viewSubject(key) {
     ${!db.settings.apiKey ? `<div class="card">Pour préparer un nouveau chapitre, ajoute ta clé API dans les <a href="#/settings">Réglages</a>.</div>` : ''}
     ${mine.length ? `<h2>Mes chapitres</h2>${mine.map(courseCard).join('')}` : ''}
     <h2>Chapitres du programme · ${esc(lvl)}</h2>
-    <button class="btn big" id="readyall" hidden></button>
     ${cat.length ? cat.map(ch => `<a class="card course" data-title="${esc(ch.title)}" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}&ch=${ch.i}&go=1" style="--sc:${s.color}"><div class="row between"><b>${esc(ch.title)}</b><span class="chip">✨ Préparer</span></div><div class="muted">${esc(clip(ch.notions, 110))}</div></a>`).join('')
       : `<div class="card muted">${chaptersFor(lvl, key).length ? 'Tous les chapitres du programme sont déjà préparés. Bravo !' : 'Pas de chapitres prédéfinis pour cette classe.'}</div>`}
     <a class="btn ghost" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}">Autre chapitre…</a>`;
   document.getElementById('lvl').onchange = ev => { db.settings.level = ev.target.value; save(); viewSubject(key); };
-  // chapitres déjà écrits (packs) : ouverts sans IA
-  loadPackIndex().then(idx => {
-    if (!document.getElementById('lvl') || location.hash !== '#/subject/' + key) return;
-    const ready = [];
-    idx.filter(p => p.level === lvl && p.subject === key).forEach(p => p.chapters.forEach((t, i) => {
-      const a = [...document.querySelectorAll('a.course[href*="go=1"]')].find(x => x.dataset.title === t);
-      if (a) { a.href = `#/pack/${p.file}/${i}`; const chip = a.querySelector('.chip'); if (chip) chip.textContent = '⚡ Prêt, sans IA'; ready.push(t); }
-    }));
-    if (ready.length > 1) {
-      const h = document.getElementById('readyall');
-      if (h) { h.hidden = false; h.textContent = `⚡ Ajouter les ${ready.length} chapitres prêts (sans IA)`; h.onclick = async () => { h.disabled = true; try { const r = await importReadyChapters(lvl, key); toast(packMsg(r)); viewSubject(key); } catch (e) { toast(e.message); h.disabled = false; } }; }
-    }
-  });
+  // chapitres déjà écrits (packs) : ajoutés directement, sans clic ni IA
+  autoImportReady(lvl, key).then(r => {
+    if (r.added && location.hash === '#/subject/' + key) { toast(packMsg(r)); viewSubject(key); }
+  }).catch(() => {});
 }
 
 /* ---------- Écran d'un chapitre : « Choisis ce que tu veux faire » ---------- */

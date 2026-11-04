@@ -74,6 +74,22 @@ async function importReadyChapters(level, subject) {
   for (const p of idx) { const r = importPack(await fetchPack(p.file)); ['added', 'skipped', 'invalid', 'cards'].forEach(k => { tot[k] += r[k]; }); tot.courses.push(...r.courses); }
   return tot;
 }
+/* Ajout automatique des chapitres prêts d'une matière (sans clic). Un chapitre déjà traité n'est jamais rajouté
+   (même si l'élève l'a supprimé ensuite) : on le retient dans db.settings.packDone. */
+async function autoImportReady(level, subject) {
+  const idx = (await loadPackIndex()).filter(p => p.level === level && p.subject === subject);
+  const key = level + '|' + subject, done = (db.settings.packDone = db.settings.packDone || {}), seen = new Set(done[key] || []);
+  const tot = { added: 0, skipped: 0, invalid: 0, cards: 0, courses: [] };
+  for (const p of idx) {
+    const only = p.chapters.map((t, i) => (seen.has(t) ? -1 : i)).filter(i => i >= 0);
+    if (!only.length) continue;
+    const r = importPack(await fetchPack(p.file), only);
+    ['added', 'skipped', 'invalid', 'cards'].forEach(k => { tot[k] += r[k]; }); tot.courses.push(...r.courses);
+    only.forEach(i => seen.add(p.chapters[i]));
+  }
+  done[key] = [...seen]; save();
+  return tot;
+}
 /* Réglages : packs fournis + import d'un fichier */
 async function packSettingsHtml() {
   const idx = await loadPackIndex();
