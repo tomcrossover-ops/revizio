@@ -100,7 +100,7 @@ function statusHtml() {
 
 /* ---------- Accueil ---------- */
 function exportData() {
-  const blob = new Blob([JSON.stringify({ courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity, exportedAt: Date.now() }, null, 1)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(backupData(), null, 1)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `revizio-${today()}.json`; a.click();
   db.settings.lastBackup = Date.now(); save(); toast('Sauvegarde enregistrée ✔');
 }
@@ -514,7 +514,7 @@ function viewSettings() {
     <div class="card row">
       <button class="ghost" id="exp">Exporter mes données</button>
       <label class="btn ghost" style="margin:0">Importer<input id="imp" type="file" accept="application/json" hidden></label>
-      <div class="muted" style="flex-basis:100%">Cours, cartes, paquets et statistiques. La clé API n'est pas incluse. ${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '. ' : ''}Pour partager seulement des cartes, utilise l'export CSV dans « Cartes ».</div>
+      <div class="muted" style="flex-basis:100%">Cours, cartes, paquets, statistiques, profil et emploi du temps. La clé API n'est pas incluse. À l'import, tu peux fusionner (rien n'est supprimé) ou remplacer. ${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '. ' : ''}Pour partager seulement des cartes, utilise l'export CSV dans « Cartes ».</div>
     </div>`;
   const sel = document.getElementById('model'), cm = document.getElementById('modelCustom');
   sel.onchange = () => { cm.hidden = sel.value !== '__custom'; if (!cm.hidden) cm.focus(); };
@@ -561,10 +561,10 @@ function viewSettings() {
     try {
       const d = JSON.parse(await ev.target.files[0].text());
       if (!Array.isArray(d.courses)) throw new Error();
-      if (!confirm('Remplacer les cours, cartes et paquets actuels par ceux du fichier ?')) return;
-      const m = migrate({ settings: db.settings, courses: d.courses, cards: d.cards, decks: d.decks, activity: d.activity });
-      db.courses = m.courses; db.cards = m.cards; db.decks = m.decks; db.activity = m.activity;
-      save(); toast('Import réussi ✔'); location.hash = '#/';
+      const merge = confirm('Fusionner cette sauvegarde avec tes données actuelles ?\n\nOK : fusionner (ajoute ce qui manque, ne supprime rien).\nAnnuler : autres choix.');
+      if (!merge && !confirm('Remplacer toutes tes données actuelles (cours, cartes, paquets, statistiques, profil) par celles du fichier ?')) return;
+      const r = applyBackup(d, merge ? 'merge' : 'replace');
+      toast(merge ? `Fusion réussie ✔ ${r.courses} cours, ${r.cards} cartes ajoutés` + (r.skipped ? ` (${r.skipped} déjà présents)` : '') : 'Import réussi ✔'); location.hash = '#/';
     } catch (e) { toast('Fichier invalide.'); }
   };
 }

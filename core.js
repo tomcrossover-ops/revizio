@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.14'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.15'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -101,6 +101,41 @@ function load() {
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
   catch (e) { toast('Stockage plein : exporte tes données depuis les Réglages.'); }
+}
+/* ---------- Sauvegarde complète ---------- */
+const BACKUP_SETTINGS = ['name', 'avatar', 'theme', 'schedule', 'profileDone', 'level', 'bonus', 'micro', 'packDone']; // jamais la clé API
+function backupData() {
+  const settings = {}; BACKUP_SETTINGS.forEach(k => { if (db.settings[k] !== undefined) settings[k] = db.settings[k]; });
+  return { format: 'revizio-backup', version: 2, app: APP_VERSION, exportedAt: Date.now(), settings, courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity };
+}
+/* mode « replace » : remplace cours, cartes, paquets, statistiques (et le profil si la sauvegarde en contient un).
+   mode « merge » : ajoute seulement ce qui manque (jamais de suppression, l'existant gagne). Retourne des compteurs. */
+function applyBackup(d, mode) {
+  if (!d || !Array.isArray(d.courses)) throw new Error('Fichier invalide.');
+  const m = migrate({ settings: db.settings, courses: d.courses, cards: d.cards, decks: d.decks, activity: d.activity });
+  const inc = d.settings && typeof d.settings === 'object' ? d.settings : null, res = { courses: 0, cards: 0, decks: 0, skipped: 0 };
+  const takeSettings = all => { if (!inc) return; BACKUP_SETTINGS.forEach(k => { if (inc[k] === undefined || k === 'packDone') return; if (all || (k === 'schedule' && !Object.keys(db.settings.schedule || {}).length)) db.settings[k] = inc[k]; });
+    if (inc.packDone && typeof inc.packDone === 'object') { const cur = db.settings.packDone = db.settings.packDone || {}; Object.keys(inc.packDone).forEach(key => { cur[key] = [...new Set([...(cur[key] || []), ...(Array.isArray(inc.packDone[key]) ? inc.packDone[key] : [])])]; }); } };
+  if (mode === 'replace') {
+    db.courses = m.courses; db.cards = m.cards; db.decks = m.decks; db.activity = m.activity;
+    res.courses = m.courses.length; res.cards = m.cards.length; res.decks = m.decks.length;
+    takeSettings(true);
+  } else {
+    const dup = new Set();
+    m.courses.forEach(c => {
+      const same = db.courses.some(x => x.id === c.id) || (c.origin === 'pack' && db.courses.some(x => sameChapter(x, c)));
+      if (same) { dup.add(c.id); res.skipped++; } else { db.courses.push(c); res.courses++; }
+    });
+    const haveCard = new Set(db.cards.map(c => c.id));
+    m.cards.forEach(c => { if (haveCard.has(c.id) || (c.courseId && dup.has(c.courseId))) return; db.cards.push(c); haveCard.add(c.id); res.cards++; });
+    const haveDeck = new Set(db.decks.map(x => x.id));
+    m.decks.forEach(x => { if (haveDeck.has(x.id)) return; db.decks.push({ ...x, cardIds: (x.cardIds || []).filter(id => haveCard.has(id)) }); res.decks++; });
+    db.activity.days = [...new Set([...db.activity.days, ...m.activity.days])].sort().slice(-400);
+    db.activity.xp = Math.max(db.activity.xp || 0, m.activity.xp || 0);
+    takeSettings(!db.settings.profileDone && !!inc && !!inc.profileDone);
+  }
+  save();
+  return res;
 }
 function toast(msg) {
   const t = document.getElementById('toast');
