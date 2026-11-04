@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.4'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.7'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -135,11 +135,16 @@ function guessTemplate(c) {
   if (/\?\s*$/.test(c.front)) return 'qr';
   return 'def';
 }
+/* Retire les doublons (même contenu, même réponse) en gardant le premier */
+const dedupe = (list, keyOf) => { const seen = new Set(); return list.filter(x => { const k = keyOf(x); if (seen.has(k)) return false; seen.add(k); return true; }); };
+const rawKey = v => String(v ?? '').toLowerCase().replace(/\s+/g, ' ').trim(); // garde les symboles : « 2+2 » ≠ « 2×2 »
+const cardKey = c => rawKey(c.front) + '|' + rawKey(c.back);
+const questionKey = q => { const { id, explanation, hint, level, skill, pitfall, ...rest } = q; return JSON.stringify(rest, (k, v) => typeof v === 'string' ? rawKey(v) : v); };
 function normCards(list, ctx) {
-  return (list || []).map(c => {
+  return dedupe((list || []).map(c => {
     if (!c || !c.q || !c.a) return null;
     return newCard({ subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId, tag: c.tag, front: clip(c.q, 200), back: clip(c.a, MAX_BACK), explain: clip(c.explain || '', 220), reversible: !!c.reversible, emoji: c.emoji });
-  }).filter(Boolean);
+  }).filter(Boolean), cardKey);
 }
 function removeCards(ids) {
   const set = new Set(ids);
@@ -170,14 +175,47 @@ function markActivity() {
 }
 function gradeItem(card, dir, rating) {
   const s = stateOf(card, dir), n = nextInterval(s, rating);
+  if (!s.last && !s.first) s.first = today(); // jour où la carte est vue pour la première fois
   if (rating === 'no') s.lapses = (s.lapses || 0) + 1;
   s.step = n.step; s.due = addDays(today(), n.days); s.last = today();
   markActivity();
   if (typeof onCardGraded === 'function') onCardGraded(rating);
 }
-function dueItems(filter = () => true) {
+/* Les cartes des chapitres prêts (packs) arrivent par petites doses : NEW_PER_DAY nouvelles cartes par jour,
+   en commençant par les chapitres déjà entamés. Les autres cartes (créées à la main ou par l'IA) ne sont pas limitées. */
+const NEW_PER_DAY = 12;
+const isPackCard = c => { const co = c.courseId && getCourse(c.courseId); return !!co && co.origin === 'pack'; };
+const isNewState = s => !s.last;
+function newQuota() {
   const t = today();
-  return db.cards.filter(filter).flatMap(c => dirsOf(c).filter(d => stateOf(c, d).due <= t).map(dir => ({ card: c, dir })));
+  let seen = 0;
+  db.cards.forEach(c => dirsOf(c).forEach(d => { if (isPackCard(c) && stateOf(c, d).first === t) seen++; }));
+  return Math.max(0, NEW_PER_DAY - seen);
+}
+/* cartes nouvelles autorisées aujourd'hui : clés « id|sens » ; chapitres entamés d'abord, puis par ancienneté */
+function newAllowedKeys() {
+  const started = new Set(db.cards.filter(c => dirsOf(c).some(d => !isNewState(stateOf(c, d)))).map(c => c.courseId));
+  const cand = [];
+  db.cards.forEach((c, i) => { if (isPackCard(c)) dirsOf(c).forEach(dir => { if (isNewState(stateOf(c, dir))) cand.push({ c, dir, i }); }); });
+  const created = id => (getCourse(id) || {}).createdAt || 0;
+  cand.sort((a, b) => (started.has(b.c.courseId) ? 1 : 0) - (started.has(a.c.courseId) ? 1 : 0) || created(a.c.courseId) - created(b.c.courseId) || a.i - b.i);
+  return new Set(cand.slice(0, newQuota()).map(x => x.c.id + '|' + x.dir));
+}
+/* opts.all : toutes les cartes dues, sans limite (révision explicite d'un chapitre) */
+function dueItems(filter = () => true, opts = {}) {
+  const t = today(), allowed = opts.all ? null : newAllowedKeys();
+  return db.cards.filter(filter).flatMap(c => dirsOf(c).filter(d => {
+    const s = stateOf(c, d);
+    if (s.due > t) return false;
+    return !allowed || !isPackCard(c) || !isNewState(s) || allowed.has(c.id + '|' + d);
+  }).map(dir => ({ card: c, dir })));
+}
+/* nouvelles cartes encore « en réserve » (pas encore proposées) */
+function reserveCount() {
+  const allowed = newAllowedKeys();
+  let n = 0;
+  db.cards.forEach(c => { if (isPackCard(c)) dirsOf(c).forEach(d => { const s = stateOf(c, d); if (isNewState(s) && s.due <= today() && !allowed.has(c.id + '|' + d)) n++; }); });
+  return n;
 }
 function cardLevel(c) {
   const m = Math.min(...dirsOf(c).map(d => stateOf(c, d).step));
@@ -318,7 +356,7 @@ function parseJSON(text) {
   return obj;
 }
 function normQuestions(list) {
-  return (list || []).map(q => {
+  return dedupe((list || []).map(q => {
     if (!q || !q.q) return null;
     const lv = Math.round(Number(q.level));
     const meta = { skill: q.skill ? clip(String(q.skill), 40) : '', pitfall: q.pitfall ? clip(String(q.pitfall), 160) : '' };
@@ -344,7 +382,7 @@ function normQuestions(list) {
     if (q.type === 'trous' && q.answer && /_{2,}/.test(q.q)) return { id: uid(), type: 'trous', q: q.q, answer: String(q.answer), accept, explanation: expl, ...meta };
     if ((q.type === 'short' || q.type === 'trous' || q.type === 'calcul') && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), ...(accept.length ? { accept } : {}), explanation: expl, ...meta };
     return null;
-  }).filter(Boolean);
+  }).filter(Boolean), questionKey);
 }
 /* Champs pédagogiques d'un cours généré : durée, objectifs, prérequis, erreurs fréquentes */
 const strList = (a, n, len) => (Array.isArray(a) ? a : []).map(x => clip(String(x || ''), len)).filter(Boolean).slice(0, n);

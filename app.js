@@ -34,14 +34,36 @@ function route() {
   const area = path.startsWith('/new') || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
   syncAiUi();
   if ((path.startsWith('/new') || path === '/import') && !hasAI()) { location.hash = '#/'; return; } // pages de création : réservées à l'IA
-  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === area));
+  document.querySelectorAll('nav a').forEach(a => { const on = a.dataset.nav === area; a.classList.toggle('active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   for (const [re, fn] of routes) {
     const m = path.match(re);
     if (m) { window.scrollTo(0, 0); return fn(...m.slice(1)); }
   }
   location.hash = '#/';
 }
+/* Accessibilité : titre de l'onglet, focus sur le contenu à chaque changement d'écran, étiquettes des champs */
+function enhanceA11y() {
+  const app = document.getElementById('app'); if (!app) return;
+  app.querySelectorAll('label:not([for])').forEach(l => {
+    if (l.querySelector('input,select,textarea')) return;
+    const n = l.nextElementSibling; if (n && /^(INPUT|SELECT|TEXTAREA)$/.test(n.tagName) && n.id) l.htmlFor = n.id;
+  });
+  app.querySelectorAll('input,select,textarea').forEach(el => {
+    if (el.type === 'hidden' || el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || (el.labels && el.labels.length)) return;
+    const t = el.getAttribute('placeholder') || el.title || (el.tagName === 'SELECT' && el.options[0] ? el.options[0].textContent : '');
+    if (t) el.setAttribute('aria-label', t.trim());
+  });
+}
+let a11yQueued = false;
+function queueA11y() { if (a11yQueued) return; a11yQueued = true; setTimeout(() => { a11yQueued = false; enhanceA11y(); }, 0); }
+if (typeof MutationObserver !== 'undefined') new MutationObserver(queueA11y).observe(document.getElementById('app'), { childList: true, subtree: true });
+function announceScreen() {
+  const h = document.querySelector('#app h1, #app h2');
+  document.title = (h && h.textContent.trim() ? h.textContent.trim() + ' · ' : '') + 'Révizio';
+  const app = document.getElementById('app'); if (app && app.focus) app.focus({ preventScroll: true });
+}
 window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => setTimeout(announceScreen, 60));
 
 /* ---------- Choisir une matière (point d'entrée principal) ---------- */
 function subjectGrid() {
@@ -79,7 +101,7 @@ function statusHtml() {
 /* ---------- Accueil ---------- */
 function viewHome() {
   const due = dueItems().length, total = db.cards.length;
-  const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir').length;
+  const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir' && !(isPackCard(c) && dirsOf(c).every(d => isNewState(stateOf(c, d))))).length, reserve = reserveCount();
   const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🥷')}` : `${esc(tx('hello_new'))} ${esc(db.settings.avatar || '🥷')}`;
   $app.innerHTML = `
     <h1>${hello}</h1>
@@ -88,7 +110,8 @@ function viewHome() {
     ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
     <div class="card hero">${due
       ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">${esc(tx('session_btn'))}</a>`
-      : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}</div>
+      : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}
+      ${reserve ? `<div class="muted" style="margin-top:8px">+ ${reserve} nouvelle${reserve > 1 ? 's' : ''} carte${reserve > 1 ? 's' : ''} arrivent les prochains jours (${NEW_PER_DAY} par jour)</div>` : ''}</div>
     ${prepHtml()}
     ${(() => { const S = buildSession(), rec = recommend(); return (S.total ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${S.minutes} min</span></div><div class="muted">${S.total} étapes mélangées : ${S.counts.cards} carte${S.counts.cards > 1 ? 's' : ''} · ${S.counts.ex} exercice${S.counts.ex > 1 ? 's' : ''} · ${S.counts.nw} nouvelle notion · ${S.counts.expl} explication</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
     <div class="grid shortcuts">
@@ -111,11 +134,12 @@ function viewHome() {
     }).join('')}` : ''}
     ${(() => { const b = computeBadges(), n = b.filter(x => x.got).length; return `<h2>${esc(tx('badges_title'))} <span class="muted">${n}/${b.length}</span></h2><div class="card badges">${b.map(x => `<span class="badge${x.got ? ' got' : ''}" title="${x.got ? 'Obtenu' : 'À débloquer'}"><span>${x.ico}</span><span><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></span></span>`).join('')}</div>`; })()}
     <div class="row between"><h2>Derniers cours</h2>${db.courses.length > 3 ? '<a href="#/courses">Tout voir →</a>' : ''}</div>
-    ${db.courses.length ? db.courses.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 3).map(courseCard).join('') :
+    ${db.courses.length ? db.courses.slice().sort((a, b) => lastSeen(b) - lastSeen(a)).slice(0, 3).map(courseCard).join('') :
       `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
     ${progressBySubject()}`;
 }
 /* ---------- Bibliothèque de cours ---------- */
+const lastSeen = c => c.lastOpened || c.createdAt || 0;
 function viewCourses() {
   const st = { level: '', subject: '', q: '' };
   const levels = LEVELS.filter(l => db.courses.some(c => c.level === l));
@@ -130,7 +154,7 @@ function viewCourses() {
   const draw = () => {
     const q = normText(st.q);
     const list = db.courses.filter(c => (!st.level || c.level === st.level) && (!st.subject || c.subject === st.subject) && (!q || normText(c.title).includes(q)))
-      .sort((a, b) => b.createdAt - a.createdAt);
+      .sort((a, b) => lastSeen(b) - lastSeen(a));
     document.getElementById('list').innerHTML = list.length ? list.map(courseCard).join('')
       : `<div class="card muted">${db.courses.length ? 'Aucun cours ne correspond.' : (hasAI() ? 'Aucun cours pour l\'instant. <a href="#/new">Crée ton premier cours</a> ou <a href="#/import">importe le tien</a>.' : 'Aucun cours pour l\'instant. Ouvre une matière depuis l\'accueil : les chapitres prêts s\'ajoutent tout seuls.')}</div>`;
   };
@@ -157,7 +181,7 @@ function prepHtml() {
     <div class="muted" style="margin:6px 0 10px">Les 2 prochains jours de cours : Révizio met ces matières en tête de ta séance.</div>${rows}${grid}</div>`;
 }
 function courseCard(c) {
-  const sc = avgScore(c), n = cardsOf(c.id).length, d = dueItems(x => x.courseId === c.id).length;
+  const sc = avgScore(c), n = cardsOf(c.id).length, d = dueItems(x => x.courseId === c.id, { all: true }).filter(it => !(isPackCard(it.card) && isNewState(stateOf(it.card, it.dir)))).length;
   return `<a class="card course" href="#/course/${c.id}">
     <div class="row between"><b>${esc(c.title)}</b>${subjChip(c.subject)}</div>
     <div style="margin:2px 0">${masteryChip(c)}</div>

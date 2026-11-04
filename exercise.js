@@ -21,7 +21,23 @@ function sameAnswer(mine, q) {
   }
   const m = normAns(mine);
   if (!m) return false;
-  return [q.answer, ...(q.accept || [])].some(c => { const n = normAns(c); return n && (n === m || stripArticle(n) === stripArticle(m)); });
+  return [q.answer, ...(q.accept || [])].some(c => { const n = normAns(c); return n && (n === m || stripArticle(n) === stripArticle(m) || closeEnough(stripArticle(m), stripArticle(n))); });
+}
+/* Variantes tolérées pour les réponses saisies : pluriel/singulier (s, x) et une faute de frappe sur un mot de 6 lettres ou plus.
+   Jamais pour les nombres (« 12 » ≠ « 13 ») ni pour les mots très courts (« mais » ≠ « mai »). */
+function closeEnough(a, b) {
+  if (!a || !b || /\d/.test(a + b)) return false;
+  if (a === b + 's' || b === a + 's' || a === b + 'x' || b === a + 'x') return Math.min(a.length, b.length) >= 4;
+  if (Math.min(a.length, b.length) < 6 || Math.abs(a.length - b.length) > 1) return false;
+  return editDistanceOne(a, b);
+}
+function editDistanceOne(a, b) {
+  if (a === b) return true;
+  if (a.length === b.length) { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i] && ++d > 1) { // une transposition compte aussi
+      return d === 2 && a[i - 1] === b[i] && a[i] === b[i - 1] && a.slice(i + 1) === b.slice(i + 1) && a.slice(0, i - 1) === b.slice(0, i - 1); } return true; }
+  const [l, sh] = a.length > b.length ? [a, b] : [b, a];
+  for (let i = 0; i < l.length; i++) if (l.slice(0, i) + l.slice(i + 1) === sh) return true;
+  return false;
 }
 /* Une réponse courte n'est corrigée automatiquement que si une réponse précise est attendue (variantes fournies) */
 const autoChecked = q => q.type === 'trous' || q.type === 'calcul' || (q.type === 'short' && Array.isArray(q.accept) && q.accept.length > 0);
@@ -62,11 +78,14 @@ function renderExercise(q, body, done) {
 
   /* --- QCM / vrai-faux : un seul essai --- */
   if (q.type === 'qcm') {
-    body.innerHTML = q.choices.map((ch, k) => `<button class="choice" data-k="${k}">${esc(ch)}</button>`).join('');
+    // l'ordre des choix est mélangé à chaque affichage (data-k garde l'indice d'origine), sauf « les deux », « aucune… »
+    const fixed = q.choices.some(ch => /ci-dessus|toutes les|aucune|les deux|tous les/i.test(ch));
+    const order = fixed ? q.choices.map((_, k) => k) : shuffle(q.choices.map((_, k) => k));
+    body.innerHTML = order.map(k => `<button class="choice" data-k="${k}">${esc(q.choices[k])}</button>`).join('');
     body.querySelectorAll('.choice').forEach(b => b.onclick = () => {
       const k = +b.dataset.k;
-      body.querySelectorAll('.choice').forEach(x => { x.disabled = true; if (+x.dataset.k === q.answer) x.classList.add('good'); });
-      if (k !== q.answer) b.classList.add('bad');
+      body.querySelectorAll('.choice').forEach(x => { x.disabled = true; if (+x.dataset.k === q.answer) { x.classList.add('good'); x.insertAdjacentHTML('beforeend', '<span class="sr"> (bonne réponse)</span>'); } });
+      if (k !== q.answer) { b.classList.add('bad'); b.insertAdjacentHTML('beforeend', '<span class="sr"> (ta réponse, incorrecte)</span>'); }
       tries = 1; end(k === q.answer);
     });
     addHint();

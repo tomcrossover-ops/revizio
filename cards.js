@@ -24,7 +24,7 @@ function viewReview(scope, id, opts = {}) {
     const d = db.decks.find(x => x.id === id); if (!d) { location.hash = '#/'; return; }
     filter = x => d.cardIds.includes(x.id); title = d.name; backHref = '#/library';
   }
-  let queue = scope === 'smart' ? shuffle(smartPlan().items) : shuffle(dueItems(filter));
+  let queue = scope === 'smart' ? shuffle(smartPlan().items) : shuffle(dueItems(filter, { all: scope === 'course' }));
   if (opts.limit) queue = queue.slice(0, opts.limit); // parcours guidé : quelques cartes clés seulement
   const total = queue.length, pathCourse = opts.path && scope === 'course' ? getCourse(id) : null;
   const res = { yes: 0, almost: 0, no: 0 }; let resolved = 0, timer = null, cur = null;

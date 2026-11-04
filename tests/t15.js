@@ -1,0 +1,41 @@
+const { make, check, done } = require('./harness'); const fs = require('fs');
+(async () => {
+  const P = require('path').join(__dirname, '..', 'packs') + '/';
+  const fetchImpl = async u => { const f = P + String(u).replace(/^packs\//, '').split('?')[0]; if (!fs.existsSync(f)) return { ok: false, status: 404 }; const txt = fs.readFileSync(f, 'utf8'); return { ok: true, status: 200, json: async () => JSON.parse(txt) }; };
+  const mk = key => make({ store: { v: 2, settings: { level: '6e', apiKey: key, profileDone: true }, courses: [], cards: [], decks: [], activity: { days: [] } }, fetchImpl });
+  // SANS clé
+  let h = mk('');
+  await h.go('#/'); await h.wait(100);
+  check('sans clé : nav « + Cours » masquée', h.$('[data-nav="new"]').hidden === true);
+  check('sans clé : pas de bouton « Nouveau cours »', !/Nouveau cours/.test(h.$('body').textContent));
+  check('sans clé : plus de « Première étape »', !/Première étape/.test(h.$('body').textContent));
+  await h.go('#/new'); await h.wait(100);
+  check('sans clé : #/new renvoie à l\'accueil', h.w.location.hash === '#/' , h.w.location.hash);
+  await h.go('#/import'); await h.wait(100);
+  check('sans clé : #/import renvoie à l\'accueil', h.w.location.hash === '#/', h.w.location.hash);
+  await h.go('#/subject/maths'); await h.wait(400);
+  check('sans clé : chapitres prêts ajoutés', h.t.db.courses.length > 0);
+  check('sans clé : pas de « Autre chapitre » ni « Préparer »', !/Autre chapitre|✨ Préparer/.test(h.$('body').textContent));
+  const c = h.t.db.courses[0];
+  await h.go('#/course/' + c.id); await h.wait(100);
+  check('sans clé : pas de « Générer d\'autres exercices »', !h.$('#more') && !/Générer/.test(h.$('body').textContent));
+  await h.go('#/courses'); await h.wait(100);
+  check('sans clé : pas de « + Nouveau »', !/\+ Nouveau/.test(h.$('body').textContent));
+  await h.go('#/card/new'); await h.wait(100);
+  check('sans clé : pas d\'offre de découpe IA', !h.$('#dosplit') && !/clé API/.test((h.$('#split') || { textContent: '' }).textContent));
+  check('sans clé : aucune erreur JS', h.errors.length === 0, h.errors.join('|'));
+  // AVEC clé
+  h = mk('sk-test');
+  await h.go('#/'); await h.wait(100);
+  check('avec clé : nav « + Cours » visible', h.$('[data-nav="new"]').hidden === false);
+  check('avec clé : bouton « Nouveau cours »', /Nouveau cours/.test(h.$('body').textContent));
+  await h.go('#/new'); await h.wait(100);
+  check('avec clé : #/new accessible', /new/.test(h.w.location.hash));
+  await h.go('#/subject/maths'); await h.wait(400);
+  check('avec clé : « Autre chapitre » présent', /Autre chapitre/.test(h.$('body').textContent));
+  const c2 = h.t.db.courses[0];
+  await h.go('#/course/' + c2.id); await h.wait(100);
+  check('avec clé : « Générer d\'autres exercices » présent', !!h.$('#more'));
+  check('avec clé : aucune erreur JS', h.errors.length === 0, h.errors.join('|'));
+  done();
+})();

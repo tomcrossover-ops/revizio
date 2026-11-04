@@ -318,3 +318,13 @@ html[data-theme="anime"] .act .star { background: var(--primary); border: 2px so
 html[data-theme="anime"] .act:active { transform: translate(3px, 3px); box-shadow: none; }
 html[data-theme="anime"] .tile.subj { border-top-width: 6px; }
 html[data-theme="anime"] .btn.big { box-shadow: 4px 4px 0 var(--ink); }
+
+/* ---------- Accessibilité ---------- */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 8px; top: -60px; z-index: 100; background: var(--primary); color: #fff; padding: 10px 14px; border-radius: 8px; font-weight: 600; }
+.skip:focus { top: 8px; }
+#app:focus { outline: none; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible, label.btn:focus-within { outline: 3px solid var(--link, #6a37ab); outline-offset: 2px; }
+.choice.good::after { content: " ✔"; font-weight: 700; }
+.choice.bad::after { content: " ✘"; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

@@ -35,7 +35,7 @@ function chapterGroups(c) {
   return g;
 }
 function recommended(c) {
-  const due = dueItems(x => x.courseId === c.id).length;
+  const due = dueItems(x => x.courseId === c.id, { all: true }).length;
   const touched = Object.keys(c.skills || {}).length || c.scores.length || cardsOf(c.id).some(x => x.fwd && x.fwd.last);
   if (!touched && !(c.path || {}).read) return c.lesson && c.lesson.length ? 'lesson' : (c.questions.length ? 'train' : 'cards');
   if (due) return 'cards';
@@ -44,7 +44,7 @@ function recommended(c) {
   return c.questions.length ? 'bilan' : 'cards';
 }
 function chapterActions(c) {
-  const id = c.id, n = cardsOf(id).length, due = dueItems(x => x.courseId === id).length, qn = (c.questions || []).length;
+  const id = c.id, n = cardsOf(id).length, due = dueItems(x => x.courseId === id, { all: true }).length, qn = (c.questions || []).length;
   const tn = Math.min(TRAIN_N, qn), bn = Math.min(BILAN_MAX, qn);
   return {
     lesson: { ico: '📖', label: 'Relire la leçon', sub: `≈ ${c.duration || 5} min · facultatif`, href: `#/course/${id}/lesson`, ok: !!((c.lesson && c.lesson.length) || c.summary) },
@@ -65,6 +65,7 @@ async function generateMore(c, focus) {
 function viewCourse(id) {
   const c = getCourse(id);
   if (!c) { location.hash = '#/'; return; }
+  c.lastOpened = Date.now(); save(); // sert à classer « Derniers cours »
   const A = chapterActions(c), rec = recommended(c), g = chapterGroups(c), hasQ = c.questions.length > 0;
   const recA = A[rec], mistakes = (c.mistakes || []).slice(-3).reverse();
   const act = k => { const a = A[k]; const cls = `act${k === rec || (rec === 'target' && k === 'train') ? ' rec' : ''}${a.ok ? '' : ' off'}`; const inner = `<span class="ai">${a.ico}</span><span class="at"><b>${esc(a.label)}</b><small>${esc(a.sub)}</small></span>${k === rec ? '<span class="star">Conseillé</span>' : ''}`; return a.ok ? `<a class="${cls}" href="${a.href}">${inner}</a>` : `<div class="${cls}" aria-disabled="true">${inner}</div>`; };
