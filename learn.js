@@ -29,7 +29,6 @@ function recordQuizResults(results) {
   });
   markActivity(); save();
 }
-const answerText = q => (q.type === 'qcm' ? q.choices[q.answer] : q.answer);
 /* Questions « ciblées » d'un cours : compétences fragiles / non acquises, ou questions déjà ratées */
 function weakQuestions(c) {
   const missed = new Set((c.mistakes || []).map(m => m.q));
@@ -124,7 +123,7 @@ function computeBadges() {
 }
 
 /* ---------- Niveaux, rangs, XP et quête du jour ---------- */
-const XP_GAIN = { yes: 10, almost: 5, no: 2, quizOk: 6, read: 20, quest: 50 };
+const XP_GAIN = { yes: 10, almost: 5, no: 2, quizOk: 6, read: 20, quest: 50, section: 5, explain: 4 };
 const RANKS = [['E', 1], ['D', 5], ['C', 10], ['B', 17], ['A', 25], ['S', 35]];
 const levelOf = xp => Math.floor(Math.sqrt(Math.max(0, xp) / 50)) + 1;
 const xpFloor = lv => 50 * (lv - 1) * (lv - 1);

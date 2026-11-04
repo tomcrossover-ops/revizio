@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '2.9'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.0'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -252,9 +252,14 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
  "questions": [
    {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "...", "skill": "compétence"},
    {"type": "vf", "q": "affirmation", "answer": true, "explanation": "...", "skill": "compétence"},
-   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "...", "skill": "compétence"}
+   {"type": "short", "q": "...", "answer": "réponse attendue", "accept": ["variante acceptée"], "explanation": "...", "skill": "compétence"},
+   {"type": "trous", "q": "phrase avec ___ à la place du mot manquant", "answer": "mot", "accept": [], "hint": "piste courte", "explanation": "...", "skill": "compétence", "level": 1},
+   {"type": "assoc", "q": "Associe …", "pairs": [["à gauche", "à droite"], ["...", "..."]], "explanation": "...", "skill": "compétence"},
+   {"type": "ordre", "q": "Remets dans l'ordre …", "items": ["1er", "2e", "3e"], "explanation": "...", "skill": "compétence"},
+   {"type": "calcul", "q": "7 × 8 = ?", "answer": "56", "explanation": "...", "skill": "compétence"}
  ]
 }
+Types d'exercices : "trous" = UN seul mot ou nombre manquant (___ dans q), "assoc" = 3 à 5 paires dont les éléments de droite sont tous différents, "ordre" = 3 à 5 étapes ou éléments donnés dans le BON ordre (l'appli les mélange), "calcul" = calcul mental avec un résultat numérique (mathématiques et sciences seulement). "short" : réponse de 1 à 3 mots avec 1 à 3 variantes dans "accept" (singulier/pluriel, synonyme). "hint" (facultatif) = piste courte qui ne donne pas la réponse ; "level" = difficulté de 1 (facile) à 3 (difficile). Varie les types : au moins 3 types différents dans le quiz, et seulement ceux qui ont du sens pour la matière.
 "skill" = la compétence travaillée par la question, en 2 à 4 mots ; 3 à 5 compétences différentes pour tout le quiz.
 Règles de concision : 5 à 8 points clés de 12 mots maximum ; 10 à 14 cartes ; explications de quiz en une phrase courte. Questions : 10 à 14 mélangeant qcm (4 choix, "answer" = index 0-3), vf et short. Ne pose que des questions dont la réponse se trouve dans le cours.
 ${CARD_RULES}
@@ -276,9 +281,14 @@ Réponds UNIQUEMENT par un objet JSON valide (sans texte autour, sans balises ma
  "questions": [
    {"type": "qcm", "q": "...", "choices": ["A","B","C","D"], "answer": 0, "explanation": "...", "skill": "compétence", "pitfall": "erreur fréquente"},
    {"type": "vf", "q": "affirmation", "answer": true, "explanation": "...", "skill": "compétence"},
-   {"type": "short", "q": "...", "answer": "réponse attendue", "explanation": "...", "skill": "compétence"}
+   {"type": "short", "q": "...", "answer": "réponse attendue", "accept": ["variante acceptée"], "explanation": "...", "skill": "compétence"},
+   {"type": "trous", "q": "phrase avec ___ à la place du mot manquant", "answer": "mot", "accept": [], "hint": "piste courte", "explanation": "...", "skill": "compétence", "level": 1},
+   {"type": "assoc", "q": "Associe …", "pairs": [["à gauche", "à droite"], ["...", "..."]], "explanation": "...", "skill": "compétence"},
+   {"type": "ordre", "q": "Remets dans l'ordre …", "items": ["1er", "2e", "3e"], "explanation": "...", "skill": "compétence"},
+   {"type": "calcul", "q": "7 × 8 = ?", "answer": "56", "explanation": "...", "skill": "compétence"}
  ]
 }
+Types d'exercices : "trous" = UN seul mot ou nombre manquant (___ dans q), "assoc" = 3 à 5 paires dont les éléments de droite sont tous différents, "ordre" = 3 à 5 étapes ou éléments donnés dans le BON ordre (l'appli les mélange), "calcul" = calcul mental avec un résultat numérique (mathématiques et sciences seulement). "short" : réponse de 1 à 3 mots avec 1 à 3 variantes dans "accept" (singulier/pluriel, synonyme). "hint" (facultatif) = piste courte qui ne donne pas la réponse ; "level" = difficulté de 1 (facile) à 3 (difficile). Varie les types : au moins 3 types différents dans le quiz, et seulement ceux qui ont du sens pour la matière.
 Règles de concision STRICTES :
 - duration : minutes nécessaires pour lire la leçon (entier de 5 à 20).
 - objectives : 2 à 3 objectifs d'apprentissage de 12 mots maximum, commençant par un verbe (« Savoir… », « Reconnaître… »).
@@ -289,7 +299,7 @@ Règles de concision STRICTES :
 - lesson : 3 à 5 parties. Chaque "content" fait 60 mots maximum, écrit en lignes courtes qui commencent par "- " (une idée par ligne), jamais de long paragraphe. 1 à 3 "examples" très courts par partie.
 - keyPoints : 5 à 7 points de 12 mots maximum, à apprendre par cœur.
 - cards : 10 à 14 cartes. ${CARD_RULES}
-- questions : 12 à 16 variées (qcm avec 4 choix et "answer" = index 0-3, vf, short), énoncé de 20 mots maximum, "explanation" d'une seule phrase courte.
+- questions : 12 à 16 variées (qcm avec 4 choix et "answer" = index 0-3, vf, short, trous, assoc, ordre, calcul), énoncé de 20 mots maximum, "explanation" d'une seule phrase courte.
 Les mauvaises réponses d'un qcm sont plausibles (erreurs réelles d'élèves), jamais absurdes. Les exercices portent sur ce qui est expliqué dans la leçon et n'ont qu'une seule bonne réponse, vérifiable sans ambiguïté. Pas de LaTeX : écris les formules en texte simple. Si la demande n'a aucun rapport avec la matière ou est incompréhensible, renvoie {"error": "explication courte"}.`;
 
 const SYSTEM_SPLIT = `Tu aides un collégien à découper une carte de révision trop longue en plusieurs cartes courtes. Chaque carte porte UNE seule idée.
@@ -324,13 +334,29 @@ function parseJSON(text) {
 function normQuestions(list) {
   return (list || []).map(q => {
     if (!q || !q.q) return null;
+    const lv = Math.round(Number(q.level));
     const meta = { skill: q.skill ? clip(String(q.skill), 40) : '', pitfall: q.pitfall ? clip(String(q.pitfall), 160) : '' };
+    if (q.hint) meta.hint = clip(String(q.hint), 120);
+    if (lv >= 1 && lv <= 3) meta.level = lv;
+    const accept = Array.isArray(q.accept) ? q.accept.map(x => clip(String(x), 60)).filter(Boolean).slice(0, 4) : [];
+    const expl = q.explanation || '';
     if (q.type === 'qcm' && Array.isArray(q.choices) && q.choices.length >= 2) {
       const idx = Number.isInteger(q.answer) ? q.answer : 0;
-      return { id: uid(), type: 'qcm', q: q.q, choices: q.choices.map(String), answer: Math.min(Math.max(idx, 0), q.choices.length - 1), explanation: q.explanation || '', ...meta };
+      return { id: uid(), type: 'qcm', q: q.q, choices: q.choices.map(String), answer: Math.min(Math.max(idx, 0), q.choices.length - 1), explanation: expl, ...meta };
     }
-    if (q.type === 'vf') return { id: uid(), type: 'qcm', q: q.q, choices: ['Vrai', 'Faux'], answer: q.answer === true || q.answer === 'true' ? 0 : 1, explanation: q.explanation || '', ...meta };
-    if (q.type === 'short' && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), explanation: q.explanation || '', ...meta };
+    if (q.type === 'vf') return { id: uid(), type: 'qcm', q: q.q, choices: ['Vrai', 'Faux'], answer: q.answer === true || q.answer === 'true' ? 0 : 1, explanation: expl, ...meta };
+    if (q.type === 'assoc' && Array.isArray(q.pairs)) {
+      const pairs = q.pairs.filter(p => Array.isArray(p) && p.length >= 2 && p[0] && p[1]).map(p => [clip(String(p[0]), 50), clip(String(p[1]), 50)]).slice(0, 5);
+      if (pairs.length >= 2 && new Set(pairs.map(p => p[1])).size === pairs.length) return { id: uid(), type: 'assoc', q: q.q, pairs, explanation: expl, ...meta };
+      return null;
+    }
+    if (q.type === 'ordre' && Array.isArray(q.items)) {
+      const items = q.items.map(x => clip(String(x), 60)).filter(Boolean).slice(0, 6);
+      return items.length >= 3 && new Set(items).size === items.length ? { id: uid(), type: 'ordre', q: q.q, items, explanation: expl, ...meta } : null;
+    }
+    if (q.type === 'calcul' && q.answer !== undefined && q.answer !== null && Number.isFinite(Number(String(q.answer).replace(',', '.').replace(/\s/g, '')))) return { id: uid(), type: 'calcul', q: q.q, answer: String(q.answer), explanation: expl, ...meta };
+    if (q.type === 'trous' && q.answer && /_{2,}/.test(q.q)) return { id: uid(), type: 'trous', q: q.q, answer: String(q.answer), accept, explanation: expl, ...meta };
+    if ((q.type === 'short' || q.type === 'trous' || q.type === 'calcul') && q.answer) return { id: uid(), type: 'short', q: q.q, answer: String(q.answer), ...(accept.length ? { accept } : {}), explanation: expl, ...meta };
     return null;
   }).filter(Boolean);
 }

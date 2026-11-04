@@ -281,3 +281,16 @@ html[data-theme="anime"] .av { border-color: var(--ink); box-shadow: 2px 2px 0 v
 html[data-theme="anime"] .av.on { background: var(--gold); }
 html[data-theme="anime"] a { font-weight: 600; }
 html[data-theme="anime"] .muted { color: var(--muted); }
+
+/* ---------- Exercices variés et séance du jour ---------- */
+.blank { display: inline-block; min-width: 4.5em; border-bottom: 3px solid var(--gold); vertical-align: baseline; margin: 0 2px; }
+.fb { min-height: 1.4em; margin: 8px 0 2px; }
+.fb .soft { color: var(--warn); font-weight: 600; } .fb .okmsg { color: var(--ok); font-weight: 700; }
+input.good, select.good { border-color: var(--ok); } input.bad, select.bad { border-color: var(--ko); }
+.assoc .arow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); }
+.assoc .arow:first-child { border-top: 0; }
+.chipsrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chipsrow .choice { width: auto; margin: 0; }
+ol.mine { margin: 6px 0 0; padding-left: 1.3em; }
+.steptag { background: var(--primary); }
+.mixrow { display: flex; flex-wrap: wrap; gap: 6px 16px; font-weight: 600; }
