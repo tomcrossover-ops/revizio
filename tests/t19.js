@@ -43,5 +43,11 @@ const st = (extra = {}, nCards = 12) => ({ v: 2, settings: Object.assign({ level
   const css = fs.readFileSync(dir + 'styles.css', 'utf8');
   check('drapeaux : police dédiée limitée aux lettres de drapeau, en tête des polices', /font-family: "Twemoji Flags"[^}]*unicode-range: U\+1F1E6-1F1FF/.test(css) && /body \{[^}]*font-family: "Twemoji Flags"/.test(css) && fs.existsSync(dir + 'fonts/TwemojiCountryFlags.woff2'));
   check('drapeaux : police mise en cache hors ligne', /fonts\/TwemojiCountryFlags\.woff2/.test(fs.readFileSync(dir + 'sw.js', 'utf8')));
+  // --- italien
+  const idx = JSON.parse(fs.readFileSync(dir + 'packs/index.json', 'utf8')).packs.filter(p => p.subject === 'italien');
+  check('italien : packs 5e, 4e et 3e déclarés', ['5e', '4e', '3e'].every(l => idx.some(p => p.level === l)));
+  check('italien : une matière « Italien » avec le drapeau 🇮🇹', /italien: \{ label: 'Italien'[^}]*🇮🇹/.test(fs.readFileSync(dir + 'core.js', 'utf8')));
+  const cat = fs.readFileSync(dir + 'catalog.js', 'utf8');
+  check('italien : chapitres au catalogue pour 5e, 4e et 3e', (cat.match(/^    italien: \[/gm) || []).length === 3);
   done();
 })().catch(e => { console.error('CRASH', e); process.exit(1); });

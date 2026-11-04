@@ -234,6 +234,15 @@ const CATALOG = {
       ['Le futur : will et be going to', 'prévision, décision, intention'],
       ['Vie quotidienne et voyages', 'vocabulaire de la ville, des transports, des vacances ; demander son chemin'],
     ],
+    italien: [
+      ['Saluer et se présenter', 'ciao, buongiorno, arrivederci ; mi chiamo, sono, come ti chiami ? ; come stai ? ; piacere'],
+      ['L\'alphabet et la prononciation', 'alphabet ; c et g devant e/i ; ch, gh, sc, gn, gli ; lettre u ; consonnes doubles ; accent tonique'],
+      ['Articles et pluriel des noms', 'il, lo, la, l\', i, gli, le ; un, uno, una, un\' ; masculin/féminin ; pluriel en -i et -e'],
+      ['Essere et avere', 'présent de essere et avere ; c\'è / ci sono ; nationalité, âge, état'],
+      ['Les verbes en -are', 'présent des verbes en -are (parlare, abitare, mangiare) ; négation avec non ; questions'],
+      ['Les nombres, l\'âge et la famille', 'nombres de 0 à 100 ; ho … anni ; la famiglia ; qui est-ce ?'],
+      ['Découvrir l\'Italie', 'carte, villes, régions, monuments, spécialités, drapeau, monnaie'],
+    ],
     techno: [
       ['Analyse d\'un objet technique', 'fonction, solutions techniques, évolution des objets'],
       ['Réaliser un projet', 'cahier des charges, maquette, prototype, essais'],
@@ -297,6 +306,15 @@ const CATALOG = {
       ['Les propositions relatives', 'who, which, that, whose'],
       ['Le discours rapporté', 'say, tell, concordance des temps'],
     ],
+    italien: [
+      ['Les verbes en -ere et -ire', 'présent de vendere, scrivere, dormire, partire ; verbes en -isc- (finire, capire)'],
+      ['Verbes irréguliers : andare, fare, stare, venire', 'présent ; andare a / in ; stare bene ; fare + activités ; venire da'],
+      ['Volere, potere, dovere', 'présent ; verbe modal + infinitif ; demander poliment avec vorrei'],
+      ['Prépositions et articles contractés', 'a, di, da, in, su + article (al, della, nel, sul…) ; villes, pays, provenance'],
+      ['L\'heure, les jours et les mois', 'che ore sono ? ; e mezza, e un quarto, meno ; jours, mois, saisons, date'],
+      ['Adjectifs, possessifs, démonstratifs', 'accord des adjectifs ; place ; il mio, la tua… ; famille sans article ; questo / quello'],
+      ['Au café, au restaurant, au magasin', 'vorrei, prendo ; il conto ; quanto costa ? ; partitif ; politesse'],
+    ],
     techno: [
       ['Conception d\'un objet', 'idée, cahier des charges, modélisation 3D'],
       ['Programmation et objets connectés', 'variables, capteurs, actionneurs, réseau'],
@@ -355,6 +373,14 @@ const CATALOG = {
       ['Le discours rapporté', 'concordance des temps, say / tell / ask'],
       ['La voix passive', 'be + participe passé, emplois'],
       ['Argumenter et donner son avis', 'connecteurs, expressions d\'opinion, accord / désaccord'],
+    ],
+    italien: [
+      ['Le passato prossimo', 'avere ou essere + participe passé ; participes irréguliers ; accord avec essere'],
+      ['L\'imparfait', 'formation régulière ; essere, fare, dire ; habitudes et descriptions ; imparfait et passato prossimo'],
+      ['Le futur simple', 'formation ; verbes irréguliers (essere, avere, andare, fare…) ; futur et projets'],
+      ['Verbes pronominaux et routine', 'alzarsi, lavarsi, vestirsi ; pronoms réfléchis ; passato prossimo avec essere ; la journée'],
+      ['Les pronoms compléments', 'lo, la, li, le ; mi, ti, gli, le, ci, vi ; place devant le verbe ; ci et ne simples'],
+      ['Comparer et donner son avis', 'più … di / che ; meno ; come ; il più ; mi piace / mi piacciono ; secondo me, penso che'],
     ],
     techno: [
       ['Projet technologique', 'cahier des charges, conception, prototype, tests'],

@@ -1,12 +1,13 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.10'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.11'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
   francais: { label: 'Français', short: 'Franç.', emoji: '📖', color: '#db2777' },
   langues: { label: 'Anglais', short: 'Anglais', emoji: '🇬🇧', color: '#0d9488' },
+  italien: { label: 'Italien', short: 'Italien', emoji: '🇮🇹', color: '#4f46e5' },
   histgeo: { label: 'Histoire-Géo', short: 'Hist-Géo', emoji: '🌍', color: '#d97706' },
   svt: { label: 'SVT', short: 'SVT', emoji: '🌱', color: '#16a34a' },
   physique: { label: 'Physique-Chimie', short: 'Phys-Chi', emoji: '⚗️', color: '#7c3aed' },
