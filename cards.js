@@ -1,4 +1,4 @@
-/* Révizio — écrans des cartes : révision active, création, bibliothèque/paquets, « Comprendre la leçon ». */
+/* Révizio — écrans des cartes : révision active, création, bibliothèque/paquets. */
 'use strict';
 
 const $app = document.getElementById('app');
@@ -303,67 +303,4 @@ function viewLibrary() {
     } catch (e) { toast('Fichier CSV illisible.'); }
   };
   renderList();
-}
-
-/* ---------- Comprendre la leçon ---------- */
-function mindmapHtml(m) {
-  if (!m || !m.center) return '';
-  return `<div class="mm"><div class="mm-center">${esc(m.center)}</div><div class="mm-branches">${(m.branches || []).map(b =>
-    `<div class="mm-branch"><div class="mm-label">${esc(b.label)}</div>${(b.children || []).map(x => `<div class="mm-leaf">${esc(x)}</div>`).join('')}</div>`).join('')}</div></div>`;
-}
-function viewUnderstand(courseId) {
-  const $ = s => document.getElementById(s);
-  const recent = db.courses.slice().sort((a, b) => b.createdAt - a.createdAt);
-  const sel = courseId && getCourse(courseId) ? courseId : (recent[0] ? recent[0].id : ''); // '' = « Autre chapitre… »
-  $app.innerHTML = `
-    <h1>Comprendre la leçon</h1>
-    <p class="muted">Explique une notion avec tes mots. Révizio compare avec les mots-clés attendus, puis te propose des cartes sur ce qui manque et une carte mentale.</p>
-    <form id="f" class="card">
-      <label>Chapitre</label>
-      <select id="course">${recent.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.title)} (${esc(c.level || '')} ${esc(subj(c.subject).label)})</option>`).join('')}<option value="" ${sel === '' ? 'selected' : ''}>Autre chapitre…</option></select>
-      <div id="other" ${sel === '' ? '' : 'hidden'}>
-        <div class="row2"><div><label>Classe</label><select id="level">${LEVELS.map(l => `<option ${l === (db.settings.level || '6e') ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div><label>Matière</label><select id="subject">${Object.entries(SUBJECTS).filter(([k]) => k !== 'autre').map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div></div>
-        <label>Chapitre</label><input id="chapter" placeholder="Ex. La photosynthèse" autocomplete="off">
-      </div>
-      <label>Explique la notion avec tes mots</label>
-      <textarea id="expl" rows="6" placeholder="Sans regarder ta leçon, écris ce que tu as compris…"></textarea>
-      <div class="row" style="margin-top:12px"><button id="go" type="submit">Vérifier ma compréhension</button><span id="st"></span></div>
-    </form>
-    <div id="out"></div>`;
-  const syncOther = () => { $('other').hidden = !!$('course').value; };
-  $('course').onchange = syncOther;
-  syncOther();
-  $('f').onsubmit = async ev => {
-    ev.preventDefault();
-    const course = getCourse($('course').value);
-    const expl = $('expl').value.trim();
-    const ctx = course ? { level: course.level || db.settings.level, subject: course.subject, chapter: course.title, courseId: course.id }
-      : { level: $('level').value, subject: $('subject').value, chapter: $('chapter').value.trim(), courseId: null };
-    if (!ctx.chapter) return toast('Indique le chapitre.');
-    if (expl.length < 30) return toast('Écris au moins une ou deux phrases.');
-    $('go').disabled = true; $('st').innerHTML = '<span class="spinner"></span> Analyse en cours…';
-    try {
-      let ref = '';
-      if (course) ref = `\n\nCours de référence :\nRésumé : ${course.summary}\nPoints clés : ${course.keyPoints.join(' ; ')}\n${(course.lesson || []).map(s => `${s.title} : ${s.content}`).join('\n')}`.slice(0, 3500);
-      const r = await askJSON(`Classe : ${ctx.level}\nMatière : ${subj(ctx.subject).label}\nChapitre : ${ctx.chapter}${ref}\n\nExplication de l'élève :\n"""${expl}"""`, SYSTEM_UNDERSTAND, 3500);
-      const norm = normText(expl);
-      const kws = (r.keywords || []).filter(k => k && k.w).slice(0, 8).map(k => ({
-        w: String(k.w), found: !!k.found || [k.w, ...(Array.isArray(k.alt) ? k.alt : [])].some(x => { const n = normText(x); return n.length >= 3 && norm.includes(n); }),
-      }));
-      const cards = normCards(r.cards, { subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId }).slice(0, 5);
-      const mm = normMindmap(r.mindmap);
-      if (course && mm) { course.mindmap = mm; save(); }
-      const hit = kws.filter(k => k.found).length;
-      $('out').innerHTML = `
-        <div class="card"><h2 style="margin-top:0">Mots-clés : ${hit}/${kws.length}</h2>
-          <div class="chips">${kws.map(k => `<span class="kw ${k.found ? 'ok' : 'ko'}">${k.found ? '✔' : '✗'} ${esc(k.w)}</span>`).join('')}</div>
-          <p>${esc(r.feedback || '')}</p></div>
-        ${cards.length ? `<div class="card"><h2 style="margin-top:0">Cartes pour combler les manques</h2><ul class="points">${cards.map(c => `<li><b>${esc(c.front)}</b><br>${esc(c.back)}</li>`).join('')}</ul><button id="addc">Ajouter ces ${cards.length} cartes</button></div>` : ''}
-        ${mm ? `<div class="card"><h2 style="margin-top:0">Carte mentale</h2>${mindmapHtml(mm)}</div>` : ''}
-        <p class="muted">Évaluation faite par IA : elle peut se tromper. Vérifie avec ton cahier.</p>`;
-      if ($('addc')) $('addc').onclick = () => { db.cards.push(...cards); save(); $('addc').disabled = true; $('addc').textContent = 'Cartes ajoutées ✔'; };
-      $('st').textContent = ''; $('go').disabled = false;
-    } catch (e) { $('st').innerHTML = `<span class="err">${esc(e.message)}</span>`; $('go').disabled = false; }
-  };
 }

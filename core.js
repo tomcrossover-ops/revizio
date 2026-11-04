@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.0'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.1'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -306,20 +306,6 @@ const SYSTEM_SPLIT = `Tu aides un collégien à découper une carte de révision
 Réponds UNIQUEMENT par un objet JSON valide : {"cards": [{"q": "question claire terminée par ?", "a": "réponse de 200 caractères maximum"}]}
 Règles : 2 à 6 cartes, fidèles au texte fourni (n'ajoute aucune information), questions précises et indépendantes les unes des autres. Si le texte ne se découpe pas, renvoie {"error": "explication courte"}.`;
 
-const SYSTEM_UNDERSTAND = `Tu es un professeur de collège bienveillant (France). Un élève a expliqué avec ses propres mots une notion de cours. Tu évalues sa compréhension et tu l'aides à combler ses manques. Tutoie l'élève.
-Réponds UNIQUEMENT par un objet JSON valide de la forme :
-{
- "keywords": [{"w": "mot-clé attendu", "alt": ["synonyme ou variante acceptée"], "found": true}],
- "feedback": "2 phrases maximum : ce qui est juste, puis ce qui manque ou est faux, ton encourageant",
- "cards": [{"q": "...", "a": "...", "explain": "...", "tag": "definition", "reversible": false}],
- "mindmap": {"center": "notion centrale", "branches": [{"label": "idée", "children": ["mot", "mot"]}]}
-}
-Règles :
-- keywords : 5 à 8 mots-clés ESSENTIELS de la notion, "found" = true seulement si l'élève exprime correctement l'idée (même avec d'autres mots).
-- cards : 3 à 5 cartes courtes sur les points MANQUANTS ou FAUX (si tout est acquis, 3 cartes de compréhension : pourquoi, exemple, utilité). ${CARD_RULES}
-- mindmap : 3 à 6 branches, 2 à 4 enfants par branche, mots ou groupes de mots de 4 mots maximum, qui relient les notions du chapitre.
-Si l'explication est vide ou sans rapport avec le chapitre, renvoie {"error": "explication courte"}.`;
-
 /* callClaude() (appel à l'IA choisie dans les Réglages : Claude, ChatGPT ou Perplexity) est défini dans ai.js */
 const askJSON = (text, system, maxTokens) => callClaude([{ type: 'text', text }], maxTokens, system);
 function parseJSON(text) {
@@ -367,13 +353,6 @@ function courseExtras(r) {
   return { duration: d >= 3 && d <= 60 ? d : 0, objectives: strList(r.objectives, 3, 110), prerequisites: strList(r.prerequisites, 3, 90), pitfalls: strList(r.pitfalls, 3, 160) };
 }
 const normLesson = list => (list || []).filter(s => s && s.title && s.content).map(s => ({ title: String(s.title), content: String(s.content), examples: Array.isArray(s.examples) ? s.examples.map(String) : [] }));
-function normMindmap(m) {
-  if (!m || !m.center) return null;
-  const branches = (Array.isArray(m.branches) ? m.branches : []).filter(b => b && b.label).slice(0, 6)
-    .map(b => ({ label: clip(b.label, 40), children: (Array.isArray(b.children) ? b.children : []).slice(0, 5).map(x => clip(x, 40)) }));
-  return branches.length ? { center: clip(m.center, 40), branches } : null;
-}
-
 /* Fichiers : images réduites en JPEG, PDF en base64 */
 function fileToB64(file) {
   return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(file); });

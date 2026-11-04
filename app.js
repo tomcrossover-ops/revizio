@@ -5,22 +5,25 @@
 const routes = [
   [/^\/?$/, viewHome],
   [/^\/courses$/, viewCourses],
-  [/^\/mindmaps$/, viewMindmaps],
   [/^\/new(?:\?(.*))?$/, viewGenerate],
   [/^\/profile$/, viewProfile],
   [/^\/path\/(\w+)\/cards$/, id => viewReview('course', id, { path: true, limit: 8 })],
   [/^\/import$/, viewImport],
+  [/^\/subject\/(\w+)$/, viewSubject],
   [/^\/course\/(\w+)$/, viewCourse],
+  [/^\/course\/(\w+)\/lesson$/, viewLesson],
+  [/^\/train\/(\w+)$/, id => viewTrain(id)],
+  [/^\/train\/(\w+)\/target$/, id => viewTrain(id, 'target')],
   [/^\/review(?:\/(course|deck|subject)\/(\w+))?$/, (s, i) => viewReview(s, i)],
   [/^\/quiz\/(\w+)$/, id => viewQuiz(id)],
   [/^\/quiz\/(\w+)\/weak$/, id => viewQuiz(id, 'weak')],
+  [/^\/quiz\/(\w+)\/missed$/, id => viewQuiz(id, 'missed')],
   [/^\/daily$/, viewDaily],
   [/^\/daily\/run$/, viewSession],
   [/^\/daily\/cards$/, () => viewReview('smart')],
   [/^\/daily\/quiz$/, () => viewQuiz('mini')],
   [/^\/library$/, viewLibrary],
   [/^\/card\/(\w+)$/, viewCardForm],
-  [/^\/understand(?:\/(\w+))?$/, viewUnderstand],
   [/^\/settings$/, viewSettings],
 ];
 function route() {
@@ -34,6 +37,15 @@ function route() {
   location.hash = '#/';
 }
 window.addEventListener('hashchange', route);
+
+/* ---------- Choisir une matière (point d'entrée principal) ---------- */
+function subjectGrid() {
+  const prep = prepSubjects();
+  return `<h2 style="margin-top:.4em">Choisis une matière</h2><div class="grid subjgrid">${Object.keys(SUBJECTS).filter(k => k !== 'autre').map(k => {
+    const s = SUBJECTS[k], n = db.courses.filter(c => c.subject === k).length;
+    return `<a class="card tile subj" href="#/subject/${k}" style="--sc:${s.color}"><span class="ico">${s.emoji}</span><b>${esc(s.short)}</b><span class="muted">${n ? plural(n, 'chapitre') : 'à découvrir'}</span>${prep.includes(k) ? '<span class="prepflag" title="À préparer pour les prochains jours de cours">⭐</span>' : ''}</a>`;
+  }).join('')}</div>`;
+}
 
 /* ---------- Fiche du joueur : niveau, rang, XP, stats, quête du jour ---------- */
 function statusHtml() {
@@ -66,6 +78,7 @@ function viewHome() {
   const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🥷')}` : `${esc(tx('hello_new'))} ${esc(db.settings.avatar || '🥷')}`;
   $app.innerHTML = `
     <h1>${hello}</h1>
+    ${subjectGrid()}
     ${statusHtml()}
     ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
     ${!db.settings.apiKey ? `<div class="card"><b>Première étape :</b> ajoute ta clé API dans les <a href="#/settings">Réglages</a> pour que Révizio puisse créer des cours et des cartes. Tu peux déjà <a href="#/card/new">créer des cartes à la main</a>.</div>` : ''}
@@ -76,7 +89,6 @@ function viewHome() {
     ${(() => { const S = buildSession(), rec = recommend(); return (S.total ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${S.minutes} min</span></div><div class="muted">${S.total} étapes mélangées : ${S.counts.cards} carte${S.counts.cards > 1 ? 's' : ''} · ${S.counts.ex} exercice${S.counts.ex > 1 ? 's' : ''} · ${S.counts.nw} nouvelle notion · ${S.counts.expl} explication</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
     <div class="grid shortcuts">
       <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
-      <a class="card tile" href="#/mindmaps"><span class="ico">🧠</span><b>Cartes mentales</b><span class="muted">${db.courses.filter(c => c.mindmap).length} carte${db.courses.filter(c => c.mindmap).length > 1 ? 's' : ''}</span></a>
       <a class="card tile" href="#/library"><span class="ico">🗂️</span><b>Mes cartes</b><span class="muted">${total} carte${total > 1 ? 's' : ''}</span></a>
     </div>
     <div class="grid">
@@ -87,7 +99,6 @@ function viewHome() {
     </div>
     <div class="row" style="margin-bottom:12px">
       <a class="btn" href="#/new">+ Nouveau cours</a>
-      <a class="btn ghost" href="#/understand">Comprendre une leçon</a>
       <a class="btn ghost" href="#/card/new">+ Carte</a>
     </div>
     ${db.decks.length ? `<h2>Mes paquets</h2>${db.decks.map(d => {
@@ -125,22 +136,6 @@ function viewCourses() {
     document.getElementById('fq').oninput = e => { st.q = e.target.value; draw(); };
   }
   draw();
-}
-
-/* ---------- Cartes mentales ---------- */
-function viewMindmaps() {
-  const withMap = db.courses.filter(c => c.mindmap).sort((a, b) => b.createdAt - a.createdAt);
-  const without = db.courses.filter(c => !c.mindmap).sort((a, b) => b.createdAt - a.createdAt);
-  $app.innerHTML = `
-    <h1>Cartes mentales</h1>
-    <p class="muted">Une carte mentale résume un chapitre en un coup d'œil. Elle se crée avec « Comprendre la leçon ».</p>
-    ${withMap.map((c, i) => `<details class="card mm-item" ${i === 0 ? 'open' : ''}>
-      <summary><b>${esc(c.title)}</b> ${subjChip(c.subject)}</summary>
-      ${mindmapHtml(c.mindmap)}
-      <div class="row" style="margin-top:10px"><a class="btn ghost" href="#/course/${c.id}">Ouvrir le cours</a><a class="btn ghost" href="#/understand/${c.id}">Refaire</a></div>
-    </details>`).join('')}
-    ${!withMap.length ? `<div class="card muted">Aucune carte mentale pour l'instant.${db.courses.length ? ' Choisis un cours ci-dessous pour en créer une.' : ' <a href="#/new">Crée d\'abord un cours.</a>'}</div>` : ''}
-    ${without.length ? `<h2>Pas encore de carte mentale</h2>${without.map(c => `<div class="card row between"><span><b>${esc(c.title)}</b> ${subjChip(c.subject)}</span><a class="btn ghost" href="#/understand/${c.id}">Créer</a></div>`).join('')}` : ''}`;
 }
 
 /* ---------- Emploi du temps : « À préparer » et « Ma semaine » ---------- */
@@ -243,6 +238,7 @@ function viewGenerate(query) {
   $('level').onchange = () => { fillSubjects(); fillChapters(); };
   $('subject').onchange = fillChapters;
   $('chsel').onchange = showNotions;
+  if (LEVELS.includes(q.level)) $('level').value = q.level;
   fillSubjects();
   if (SUBJECTS[q.subject] && q.subject !== 'autre') $('subject').value = q.subject; // arrivée depuis « À préparer »
   fillChapters();
@@ -275,6 +271,7 @@ function viewGenerate(query) {
       st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false;
     }
   };
+  if (q.go === '1' && db.settings.apiKey) $('f').dispatchEvent(new Event('submit', { cancelable: true })); // arrivée depuis l'écran d'une matière : on prépare tout de suite
 }
 
 /* ---------- Profil : avatar, prénom, classe, emploi du temps ---------- */
@@ -352,74 +349,6 @@ function viewImport() {
   };
 }
 
-/* ---------- Fiche d'un cours ---------- */
-/* Parcours guidé : cours → cartes visuelles → test */
-function pathHtml(c) {
-  const st = pathState(c), next = pathNext(c);
-  const act = { read: '<button id="startpath">Étape 1 : lire la leçon ↓</button>', cards: `<a class="btn" href="#/path/${c.id}/cards">Étape 2 : réviser les cartes clés</a>`, test: `<a class="btn" href="#/quiz/${c.id}">Étape 3 : tester mon niveau</a>` };
-  return `<div class="card path"><div class="steps">${PATH_STEPS.map(([k, n, l]) => `<span class="step${st[k] ? ' done' : ''}${k === next ? ' now' : ''}"><i>${st[k] ? '✔' : n}</i>${l}</span>`).join('<span class="sep"></span>')}</div>
-    <div style="margin-top:10px">${next ? act[next] : '<b>🎓 Parcours terminé !</b> <span class="muted">Reviens réviser tes cartes régulièrement.</span>'}</div></div>`;
-}
-function skillsCard(c) {
-  const names = Object.keys(c.skills || {}).filter(n => skillLevel(c, n));
-  if (!names.length) return '';
-  return `<div class="card"><h2 style="margin-top:0">Mes compétences</h2>${names.map(n => { const lv = skillLevel(c, n); return `<div class="row between" style="margin-bottom:6px"><span>${esc(n)}</span><span class="chip ${SKILL_CLASS[lv]}">${SKILL_LV[lv]}</span></div>`; }).join('')}</div>`;
-}
-function mistakesCard(c) {
-  const m = (c.mistakes || []).slice(-6).reverse();
-  if (!m.length) return '';
-  return `<div class="card"><h2 style="margin-top:0">Mes dernières erreurs</h2>${m.map(x => `<div style="margin-bottom:10px"><div class="muted">${fmtDate(x.date)} · ${esc(x.skill)}</div><b>${esc(x.q)}</b><div>Réponse : ${esc(x.answer)}</div></div>`).join('')}</div>`;
-}
-function viewCourse(id) {
-  const c = getCourse(id);
-  if (!c) { location.hash = '#/'; return; }
-  const n = cardsOf(id).length, d = dueItems(x => x.courseId === id).length;
-  $app.innerHTML = `
-    <div class="row between"><h1>${esc(c.title)}</h1>${subjChip(c.subject)}</div>
-    ${pathHtml(c)}
-    <div class="row" style="margin-bottom:12px">
-      <a class="btn ghost" href="#/review/course/${c.id}">Cartes mémoire${d ? ` (${d})` : ` · ${n}`}</a>
-      <a class="btn ghost" href="#/quiz/${c.id}">Quiz</a>
-      <a class="btn ghost" href="#/understand/${c.id}">Comprendre ce chapitre</a>
-    </div>
-    <div class="row" style="margin-bottom:10px">${masteryChip(c)}${c.duration ? `<span class="chip">⏱ ${c.duration} min</span>` : ''}${c.level ? `<span class="chip">${esc(c.level)}</span>` : ''}</div>
-    ${c.objectives && c.objectives.length ? `<div class="card"><h2 style="margin-top:0">Objectifs</h2><ul class="points">${c.objectives.map(p => `<li>${esc(p)}</li>`).join('')}</ul>${c.prerequisites && c.prerequisites.length ? `<div class="muted"><b>À connaître avant :</b> ${c.prerequisites.map(esc).join(' · ')}</div>` : ''}</div>` : ''}
-    <div class="card"><h2 style="margin-top:0">Résumé</h2><p>${esc(c.summary)}</p></div>
-    <div id="lessonbox">${lessonHtml(c)}</div>
-    ${c.pitfalls && c.pitfalls.length ? `<div class="card"><h2 style="margin-top:0">Erreurs fréquentes</h2><ul class="points">${c.pitfalls.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
-    <div class="card"><h2 style="margin-top:0">Ce que tu dois retenir</h2><ul class="points">${c.keyPoints.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>
-    ${!pathState(c).read ? `<button id="readdone" style="width:100%;margin-bottom:12px">J'ai lu la leçon ✔ Passer aux cartes</button>` : ''}
-    ${skillsCard(c)}
-    ${c.mindmap ? `<div class="card"><h2 style="margin-top:0">Carte mentale</h2>${mindmapHtml(c.mindmap)}</div>` : ''}
-    ${mistakesCard(c)}
-    ${c.scores.length ? `<div class="card"><h2 style="margin-top:0">Mes quiz</h2>${c.scores.slice(-6).reverse().map(s => `<div class="row between"><span class="muted">${fmtDate(s.date)}</span><b>${s.score}/${s.total}</b></div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:8px">
-      <button class="ghost" id="more">Générer d'autres exercices</button>
-      <button class="danger" id="del">Supprimer ce cours</button>
-      <span id="st"></span>
-    </div>`;
-  const rd = document.getElementById('readdone');
-  if (rd) rd.onclick = () => { c.path = Object.assign(c.path || {}, { read: true }); addXP(XP_GAIN.read); save(); location.hash = cardsOf(id).length ? '#/path/' + id + '/cards' : '#/quiz/' + id; };
-  const go = document.getElementById('startpath');
-  if (go) go.onclick = () => { const b = document.getElementById('lessonbox'); if (b) b.scrollIntoView({ behavior: 'smooth' }); };
-  document.getElementById('del').onclick = () => {
-    if (confirm(`Supprimer ce cours, ses ${n} carte(s) et ses exercices ?`)) {
-      removeCards(cardsOf(id).map(x => x.id)); db.courses = db.courses.filter(x => x.id !== id); save(); location.hash = '#/';
-    }
-  };
-  document.getElementById('more').onclick = async () => {
-    const st = document.getElementById('st'), btn = document.getElementById('more');
-    btn.disabled = true; st.innerHTML = '<span class="spinner"></span> Génération…';
-    try {
-      const known = cardsOf(id).map(x => x.front).concat(c.questions.map(q => q.q)).join(' | ');
-      const text = `Résumé : ${c.summary}\nPoints clés :\n- ${c.keyPoints.join('\n- ')}`;
-      const r = await callClaude(await buildContent([], text, c.subject, c.title, `Génère de NOUVELLES cartes et questions, différentes de celles-ci : ${known.slice(0, 2500)}`));
-      db.cards.push(...normCards(r.cards, { subject: c.subject, chapter: c.title, courseId: c.id })); c.questions.push(...normQuestions(r.questions)); save();
-      toast('Nouveaux exercices ajoutés ✔'); viewCourse(id);
-    } catch (e) { st.innerHTML = `<span class="err">${esc(e.message)}</span>`; btn.disabled = false; }
-  };
-}
-
 /* ---------- Session du jour (révision intelligente) ---------- */
 function viewDaily() {
   const S = buildSession(), rec = recommend();
@@ -442,8 +371,15 @@ function viewQuiz(id, mode) {
   let qs;
   if (mini) qs = shuffle(smartPlan().questions);
   else if (c) {
-    const pool = mode === 'weak' ? weakQuestions(c) : c.questions;
-    qs = shuffle(pool).slice(0, 10).map(q => ({ q, c }));
+    let pool;
+    if (mode === 'weak') pool = weakQuestions(c);
+    else if (mode === 'missed') { const ids = new Set(c.lastMissed || []); pool = c.questions.filter(q => ids.has(qid(q))); }
+    else { // bilan : 10 à 15 questions, différentes de celles du bilan précédent quand c'est possible
+      const last = new Set(c.lastBilan || []), fresh = c.questions.filter(q => !last.has(qid(q)));
+      pool = fresh.length >= Math.min(BILAN_MIN, c.questions.length) ? fresh : c.questions;
+    }
+    qs = shuffle(pool).slice(0, mode === 'weak' || mode === 'missed' ? 10 : BILAN_MAX).map(q => ({ q, c }));
+    if (!mode) c.lastBilan = qs.map(x => qid(x.q));
   }
   if (!qs || !qs.length) { toast(mini ? 'Aucune question fragile à retravailler, bravo !' : 'Pas de questions pour ce cours.'); location.hash = mini ? '#/daily' : '#/'; return; }
   let i = 0, score = 0; const results = [];
@@ -451,7 +387,7 @@ function viewQuiz(id, mode) {
     if (i >= qs.length) return end();
     const { q, c: qc } = qs[i];
     $app.innerHTML = `
-      <div class="row between"><span class="muted">${mode === 'weak' ? 'Quiz ciblé · ' : mini ? 'Mini-quiz · ' : ''}Question ${i + 1} / ${qs.length}</span>${subjChip(qc.subject)}</div>
+      <div class="row between"><span class="muted">${mode === 'weak' ? 'Quiz ciblé · ' : mode === 'missed' ? 'Questions ratées · ' : mini ? 'Mini-quiz · ' : 'Bilan de compétence · '}Question ${i + 1} / ${qs.length}</span>${subjChip(qc.subject)}</div>
       <div class="bar" style="margin:8px 0"><i style="width:${i / qs.length * 100}%"></i></div>
       <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${EX_LABEL[q.type] || ''} ${levelDots(q)}</div></div><div id="body"></div>`;
     const body = document.getElementById('body');
@@ -464,40 +400,42 @@ function viewQuiz(id, mode) {
     renderExercise(q, body, ok => finish(ok));
   };
   const end = () => {
-    if (!mini) c.scores.push({ date: Date.now(), score, total: qs.length, mode: mode || 'full' });
+    if (!mini && !mode) c.scores.push({ date: Date.now(), score, total: qs.length, mode: 'full' });
     recordQuizResults(results);
     const pct = Math.round(score / qs.length * 100), wrong = results.filter(r => !r.ok).map(r => r.q);
-    const msg = pct >= 80 ? 'Magnifique, cette leçon est bien maîtrisée !' : pct >= 50 ? 'Pas mal : quelques notions à consolider.' : 'À retravailler : relis la leçon et refais les cartes.';
-    // bilan par compétence
+    if (!mini && (!mode || mode === 'missed')) { c.lastMissed = wrong.map(qid); save(); }
+    const made = !mini && wrong.length ? cardsFromMistakes(c, wrong) : 0; // les erreurs deviennent des flashcards automatiquement
+    const msg = pct >= 80 ? 'Magnifique, cette leçon est bien maîtrisée !' : pct >= 50 ? 'Pas mal : quelques notions à consolider.' : 'À retravailler : on va cibler ce qui pose problème.';
+    // analyse par compétence : maîtrisée / fragile / non acquise
     const groups = {};
     results.forEach(r => { const g = groups[skillOf(r.q)] || (groups[skillOf(r.q)] = { ok: 0, n: 0 }); g.n++; if (r.ok) g.ok++; });
     const rows = Object.entries(groups).map(([name, g]) => ({ name, ...g, lv: ratioLevel(g.ok / g.n) }));
-    const weak = rows.filter(r => r.lv !== 'ok');
+    const weak = rows.filter(r => r.lv !== 'ok').sort((x, y) => (x.lv === 'ko' ? 0 : 1) - (y.lv === 'ko' ? 0 : 1));
     const plan = weak.length
-      ? `<ul class="points">${weak.map(r => `<li>Relis « ${esc(r.name)} » dans la leçon, puis refais ses cartes.</li>`).join('')}<li>Refais un quiz ciblé demain pour vérifier.</li></ul>`
-      : '<p>Tout est acquis dans ce quiz. Reviens dans quelques jours pour confirmer.</p>';
-    const reco = weak.length ? `Revois ${weak.map(r => `« ${esc(r.name)} »`).join(', ')} avant de repasser le quiz bilan.` : 'Bravo, tu peux passer au chapitre suivant.';
+      ? `<ol class="points">${weak.map(r => `<li><b>${esc(r.name)}</b> <span class="chip ${SKILL_CLASS[r.lv]}">${SKILL_LV[r.lv]}</span> — relis ce point, puis refais ses exercices.</li>`).join('')}<li>Refais un bilan avec de nouvelles questions pour vérifier.</li></ol>`
+      : '<p>Tout est acquis dans ce bilan. Reviens dans quelques jours pour confirmer.</p>';
+    const reco = weak.length ? `Revois ${weak.map(r => `« ${esc(r.name)} »`).join(', ')} avant de refaire un bilan.` : 'Bravo, tu peux passer au chapitre suivant.';
     const back = mini ? '#/daily' : '#/course/' + c.id;
     $app.innerHTML = `
-      <h1>Bilan</h1>
+      ${mini ? '' : backLink(back, 'Chapitre')}
+      <h1>${mini ? 'Bilan' : mode === 'weak' ? 'Quiz ciblé terminé' : mode === 'missed' ? 'Questions ratées : bilan' : 'Bilan de compétence'}</h1>
       <div class="card"><div class="score">${score}/${qs.length}</div><p style="text-align:center">${msg}</p></div>
       <div class="card"><b>${reco}</b></div>
+      ${made ? `<div class="card">🃏 <b>${plural(made, 'flashcard')} créée${made > 1 ? 's' : ''}</b> à partir de tes erreurs. Elles reviendront dans tes révisions.</div>` : ''}
       <h2>Mes compétences</h2>
       <div class="card">${rows.map(r => `<div class="row between" style="margin-bottom:6px"><span>${esc(r.name)} <span class="muted">${r.ok}/${r.n}</span></span><span class="chip ${SKILL_CLASS[r.lv]}">${SKILL_LV[r.lv]}</span></div>`).join('')}</div>
       <h2>Mon plan de révision</h2>
       <div class="card">${plan}</div>
-      <div class="row" id="acts" style="margin-bottom:12px">
-        ${wrong.length && !mini ? `<button id="mk">Créer des cartes avec mes erreurs (${wrong.length})</button>` : ''}
-        ${!mini && weakQuestions(c).length ? `<a class="btn ghost" href="#/quiz/${c.id}/weak" onclick="setTimeout(route,0)">Quiz ciblé</a>` : ''}
-        ${!mini ? `<a class="btn ghost" href="#/quiz/${c.id}" onclick="setTimeout(route,0)">Refaire un quiz</a><a class="btn ghost" href="#/review/course/${c.id}">Réviser les cartes</a>` : ''}
-        <a class="btn ghost" href="${back}">${mini ? 'Retour' : 'Retour au cours'}</a>
+      <div class="acts" id="acts">
+        ${wrong.length ? `<button class="act" id="seeErr"><span class="ai">🔍</span><span class="at"><b>Revoir mes erreurs</b><small>${plural(wrong.length, 'question')} avec explication</small></span></button>` : ''}
+        ${!mini && wrong.length ? `<a class="act" href="#/quiz/${c.id}/missed" onclick="setTimeout(route,0)"><span class="ai">↩️</span><span class="at"><b>Refaire seulement les questions ratées</b></span></a>` : ''}
+        ${!mini && weakQuestions(c).length ? `<a class="act rec" href="#/train/${c.id}/target"><span class="ai">🎯</span><span class="at"><b>Exercices ciblés</b><small>Sur tes notions fragiles</small></span></a>` : ''}
+        ${!mini ? `<a class="act" href="#/quiz/${c.id}" onclick="setTimeout(route,0)"><span class="ai">🔁</span><span class="at"><b>Nouveau bilan</b><small>Avec des questions différentes</small></span></a><a class="act" href="#/review/course/${c.id}"><span class="ai">🃏</span><span class="at"><b>Mes flashcards</b></span></a>` : ''}
       </div>
-      ${wrong.length ? `<h2>À revoir</h2>${wrong.map(q => `<div class="card"><b>${esc(q.q)}</b><div class="muted">Réponse : ${esc(answerText(q))}</div>${q.explanation ? `<div class="explain">${esc(q.explanation)}</div>` : ''}${q.pitfall ? `<div class="explain"><b>Erreur fréquente :</b> ${esc(q.pitfall)}</div>` : ''}</div>`).join('')}` : ''}`;
-    const mk = document.getElementById('mk');
-    if (mk) mk.onclick = () => {
-      const n = cardsFromMistakes(c, wrong); mk.disabled = true;
-      mk.textContent = n ? `✔ ${n} carte${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}` : 'Ces cartes existent déjà';
-    };
+      <a class="btn ghost" href="${back}">${mini ? 'Retour' : 'Retour au chapitre'}</a>
+      <div id="errs" hidden>${wrong.map(q => `<div class="card"><b>${qHtml(q)}</b><div class="muted">Réponse : ${esc(answerText(q))}</div>${q.explanation ? `<div class="explain">${esc(q.explanation)}</div>` : ''}${q.pitfall ? `<div class="explain"><b>Erreur fréquente :</b> ${esc(q.pitfall)}</div>` : ''}</div>`).join('')}</div>`;
+    const se = document.getElementById('seeErr');
+    if (se) se.onclick = () => { const e = document.getElementById('errs'); e.hidden = !e.hidden; if (!e.hidden && e.scrollIntoView) e.scrollIntoView({ behavior: 'smooth' }); };
   };
   step();
 }
