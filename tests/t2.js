@@ -148,7 +148,7 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
   const im = h.$('#imp'); Object.defineProperty(im, 'files', { value: [{ text: async () => JSON.stringify(old) }] }); h.change(im); await h.wait(40);
   check('import d\'une ancienne sauvegarde (migrée)', h.t.db.cards.length === 1 && h.t.db.cards[0].fwd.step === 1 && h.t.db.courses[0].cards === undefined && h.t.db.settings.name === 'Léo');
   await h.go('#/settings'); h.$('#exp').click(); check('export JSON déclenché', /^revizio-\d{4}/.test(h.w.__clicked || ''));
-  check('version affichée 3.8', /Version installée : 3\.8/.test(h.$('body').textContent));
+  check('version affichée 3.9', /Version installée : 3\.9/.test(h.$('body').textContent));
   check('aucune erreur JS (réglages)', h.errors.length === 0, h.errors.join('|'));
   done();
 })().catch(e => { console.error('CRASH', e); process.exit(1); });

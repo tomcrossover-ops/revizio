@@ -99,6 +99,11 @@ function statusHtml() {
 }
 
 /* ---------- Accueil ---------- */
+function exportData() {
+  const blob = new Blob([JSON.stringify({ courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity, exportedAt: Date.now() }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `revizio-${today()}.json`; a.click();
+  db.settings.lastBackup = Date.now(); save(); toast('Sauvegarde enregistrée ✔');
+}
 function viewHome() {
   const due = dueItems().length, total = db.cards.length;
   const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir' && !(isPackCard(c) && dirsOf(c).every(d => isNewState(stateOf(c, d))))).length, reserve = reserveCount();
@@ -113,6 +118,7 @@ function viewHome() {
       : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}
       ${reserve ? `<div class="muted" style="margin-top:8px">+ ${reserve} nouvelle${reserve > 1 ? 's' : ''} carte${reserve > 1 ? 's' : ''} arrivent les prochains jours (${NEW_PER_DAY} par jour)</div>` : ''}</div>
     ${prepHtml()}
+    ${backupDue() ? `<div class="card" id="bk" role="region" aria-label="Rappel de sauvegarde"><b>💾 Pense à sauvegarder</b><div class="muted" style="margin:4px 0 8px">${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '.' : 'Tu n\'as encore jamais sauvegardé.'} Tes cours et tes cartes ne sont que sur cet appareil : si le navigateur est vidé, tout disparaît.</div><div class="row"><button id="bkNow">Sauvegarder maintenant</button><button class="ghost" id="bkLater">Plus tard</button></div></div>` : ''}
     ${(() => { const S = buildSession(), rec = recommend(); return (S.total ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${S.minutes} min</span></div><div class="muted">${S.total} étapes mélangées : ${S.counts.cards} carte${S.counts.cards > 1 ? 's' : ''} · ${S.counts.ex} exercice${S.counts.ex > 1 ? 's' : ''} · ${S.counts.nw} nouvelle notion · ${S.counts.expl} explication</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
     <div class="grid shortcuts">
       <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
@@ -137,6 +143,9 @@ function viewHome() {
     ${db.courses.length ? db.courses.slice().sort((a, b) => lastSeen(b) - lastSeen(a)).slice(0, 3).map(courseCard).join('') :
       `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
     ${progressBySubject()}`;
+  const bkNow = document.getElementById('bkNow'), bkLater = document.getElementById('bkLater');
+  if (bkNow) bkNow.onclick = () => { exportData(); viewHome(); };
+  if (bkLater) bkLater.onclick = () => { db.settings.backupSnooze = Date.now() + BACKUP_SNOOZE_DAYS * 864e5; save(); viewHome(); };
 }
 /* ---------- Bibliothèque de cours ---------- */
 const lastSeen = c => c.lastOpened || c.createdAt || 0;
@@ -456,9 +465,9 @@ function viewQuiz(id, mode) {
       <div class="card">${plan}</div>
       <div class="acts" id="acts">
         ${wrong.length ? `<button class="act" id="seeErr"><span class="ai">🔍</span><span class="at"><b>Revoir mes erreurs</b><small>${plural(wrong.length, 'question')} avec explication</small></span></button>` : ''}
-        ${!mini && wrong.length ? `<a class="act" href="#/quiz/${c.id}/missed" onclick="setTimeout(route,0)"><span class="ai">↩️</span><span class="at"><b>Refaire seulement les questions ratées</b></span></a>` : ''}
+        ${!mini && wrong.length ? `<a class="act" href="#/quiz/${c.id}/missed" data-reroute><span class="ai">↩️</span><span class="at"><b>Refaire seulement les questions ratées</b></span></a>` : ''}
         ${!mini && weakQuestions(c).length ? `<a class="act rec" href="#/train/${c.id}/target"><span class="ai">🎯</span><span class="at"><b>Exercices ciblés</b><small>Sur tes notions fragiles</small></span></a>` : ''}
-        ${!mini ? `<a class="act" href="#/quiz/${c.id}" onclick="setTimeout(route,0)"><span class="ai">🔁</span><span class="at"><b>Nouveau bilan</b><small>Avec des questions différentes</small></span></a><a class="act" href="#/review/course/${c.id}"><span class="ai">🃏</span><span class="at"><b>Mes flashcards</b></span></a>` : ''}
+        ${!mini ? `<a class="act" href="#/quiz/${c.id}" data-reroute><span class="ai">🔁</span><span class="at"><b>Nouveau bilan</b><small>Avec des questions différentes</small></span></a><a class="act" href="#/review/course/${c.id}"><span class="ai">🃏</span><span class="at"><b>Mes flashcards</b></span></a>` : ''}
       </div>
       <a class="btn ghost" href="${back}">${mini ? 'Retour' : 'Retour au chapitre'}</a>
       <div id="errs" hidden>${wrong.map(q => `<div class="card"><b>${qHtml(q)}</b><div class="muted">Réponse : ${esc(answerText(q))}</div>${q.explanation ? `<div class="explain">${esc(q.explanation)}</div>` : ''}${q.pitfall ? `<div class="explain"><b>Erreur fréquente :</b> ${esc(q.pitfall)}</div>` : ''}</div>`).join('')}</div>`;
@@ -504,7 +513,7 @@ function viewSettings() {
     <div class="card row">
       <button class="ghost" id="exp">Exporter mes données</button>
       <label class="btn ghost" style="margin:0">Importer<input id="imp" type="file" accept="application/json" hidden></label>
-      <div class="muted" style="flex-basis:100%">Cours, cartes, paquets et statistiques. La clé API n'est pas incluse. Pour partager seulement des cartes, utilise l'export CSV dans « Cartes ».</div>
+      <div class="muted" style="flex-basis:100%">Cours, cartes, paquets et statistiques. La clé API n'est pas incluse. ${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '. ' : ''}Pour partager seulement des cartes, utilise l'export CSV dans « Cartes ».</div>
     </div>`;
   const sel = document.getElementById('model'), cm = document.getElementById('modelCustom');
   sel.onchange = () => { cm.hidden = sel.value !== '__custom'; if (!cm.hidden) cm.focus(); };
@@ -546,10 +555,7 @@ function viewSettings() {
     } catch (e) { toast(e.message && !/JSON/.test(e.message) ? e.message : 'Fichier invalide.'); }
     ev.target.value = '';
   };
-  document.getElementById('exp').onclick = () => {
-    const blob = new Blob([JSON.stringify({ courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity, exportedAt: Date.now() }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `revizio-${today()}.json`; a.click();
-  };
+  document.getElementById('exp').onclick = exportData;
   document.getElementById('imp').onchange = async ev => {
     try {
       const d = JSON.parse(await ev.target.files[0].text());
@@ -590,6 +596,12 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').then(watchUpdates).catch(() => {});
   // Rechargement uniquement après un clic (évite un rechargement surprise à la première installation).
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (wantReload) location.reload(); });
+  // Pas de gestionnaires en ligne (la CSP les interdit) : délégation d'événements.
+  document.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('a[data-reroute], a.skip');
+    if (!t) return;
+    if (t.classList.contains('skip')) { e.preventDefault(); document.getElementById('app').focus(); } else setTimeout(route, 0);
+  });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && swReg) swReg.update().catch(() => {}); });
 }
 route();

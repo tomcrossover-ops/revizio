@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.8'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.9'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -47,6 +47,13 @@ const safeImg = s => (typeof s === 'string' && /^data:image\/(jpeg|png|webp);bas
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const today = () => ymd(new Date());
+/* Rappel de sauvegarde : seulement s'il y a de quoi perdre, et pas plus d'une fois par semaine si on repousse. */
+const BACKUP_EVERY_DAYS = 14, BACKUP_SNOOZE_DAYS = 7;
+function backupDue(now = Date.now()) {
+  const s = db.settings, DAY = 864e5;
+  const hasData = db.cards.length >= 10 || db.activity.days.length >= 3 || db.courses.length >= 3;
+  return hasData && now - (s.lastBackup || 0) > BACKUP_EVERY_DAYS * DAY && now > (s.backupSnooze || 0);
+}
 function addDays(s, n) { const t = new Date(s + 'T12:00:00'); t.setDate(t.getDate() + n); return ymd(t); }
 const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
@@ -54,7 +61,7 @@ const fmtDate = t => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', m
 const freshState = () => ({ step: 0, due: today(), lapses: 0 });
 function migrate(d) {
   d = d && typeof d === 'object' ? d : {};
-  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🥷', theme: 'systeme', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true }, d.settings || {});
+  d.settings = Object.assign({ name: '', provider: 'anthropic', profiles: {}, avatar: '🥷', theme: 'systeme', schedule: {}, profileDone: false, apiKey: '', model: MODELS[0][0], level: '6e', bonus: true, lastBackup: 0, backupSnooze: 0 }, d.settings || {});
   if (!d.settings.schedule || typeof d.settings.schedule !== 'object') d.settings.schedule = {};
   d.courses = Array.isArray(d.courses) ? d.courses : [];
   d.cards = Array.isArray(d.cards) ? d.cards : [];
