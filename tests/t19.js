@@ -39,5 +39,9 @@ const st = (extra = {}, nCards = 12) => ({ v: 2, settings: Object.assign({ level
   const inl = srcs.filter(([f, s]) => /\son(click|change|input|submit|load|error|keydown)\s*=\s*["']/.test(s)).map(x => x[0]);
   check('aucun gestionnaire d\'événement en ligne (onclick=…)', inl.length === 0, inl.join());
   check('aucune balise <script> en ligne', !/<script(?![^>]*\ssrc=)[^>]*>/.test(srcs[0][1]));
+  // --- drapeaux sous Windows
+  const css = fs.readFileSync(dir + 'styles.css', 'utf8');
+  check('drapeaux : police dédiée limitée aux lettres de drapeau, en tête des polices', /font-family: "Twemoji Flags"[^}]*unicode-range: U\+1F1E6-1F1FF/.test(css) && /body \{[^}]*font-family: "Twemoji Flags"/.test(css) && fs.existsSync(dir + 'fonts/TwemojiCountryFlags.woff2'));
+  check('drapeaux : police mise en cache hors ligne', /fonts\/TwemojiCountryFlags\.woff2/.test(fs.readFileSync(dir + 'sw.js', 'utf8')));
   done();
 })().catch(e => { console.error('CRASH', e); process.exit(1); });

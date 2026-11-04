@@ -1,0 +1,3 @@
+TwemojiCountryFlags.woff2 — polices de drapeaux (country-flag-emoji-polyfill, Talkjs).
+Basée sur Twemoji (© Twitter, Inc. et contributeurs), graphismes sous licence CC-BY 4.0 : https://github.com/twitter/twemoji
+Sert uniquement à afficher les drapeaux (ex. 🇬🇧) sous Windows, qui ne les dessine pas nativement.
