@@ -10,6 +10,7 @@ const routes = [
   [/^\/path\/(\w+)\/cards$/, id => viewReview('course', id, { path: true, limit: 8 })],
   [/^\/import$/, viewImport],
   [/^\/subject\/(\w+)$/, viewSubject],
+  [/^\/pack\/([\w.\-]+)\/(\d+)$/, viewPackChapter],
   [/^\/course\/(\w+)$/, viewCourse],
   [/^\/course\/(\w+)\/lesson$/, viewLesson],
   [/^\/train\/(\w+)$/, id => viewTrain(id)],
@@ -468,6 +469,10 @@ function viewSettings() {
       <button class="danger" id="updForce">Forcer la mise à jour</button>
       <div class="muted" style="flex-basis:100%">« Forcer » vide le cache de l'appli et recharge la dernière version. Tes cours, tes cartes et tes réglages sont conservés.</div>
     </div>
+    <h2>Cours prêts à l'emploi <span class="muted">sans IA</span></h2>
+    <div class="card"><div class="muted" style="margin-bottom:8px">Des chapitres déjà écrits (leçon, cartes, exercices) : les ajouter ne coûte aucun appel à l'IA. Ils sont aussi proposés directement dans chaque matière.</div>
+      <div id="packs"><span class="muted">Chargement…</span></div>
+      <label class="btn ghost" style="margin:10px 0 0">Importer un fichier de cours (.json)<input id="impPack" type="file" accept="application/json" multiple hidden></label></div>
     <h2>Sauvegarde complète</h2>
     <div class="card row">
       <button class="ghost" id="exp">Exporter mes données</button>
@@ -504,6 +509,15 @@ function viewSettings() {
       if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
     } catch (e) { /* on recharge quand même */ }
     location.reload();
+  };
+  packSettingsHtml().then(p => { const el = document.getElementById('packs'); if (el) { el.innerHTML = p.html; bindPackSettings(p.idx); } });
+  document.getElementById('impPack').onchange = async ev => {
+    const tot = { added: 0, skipped: 0, invalid: 0, cards: 0 };
+    try {
+      for (const f of ev.target.files) { const r = importPack(JSON.parse(await f.text())); ['added', 'skipped', 'invalid', 'cards'].forEach(k => { tot[k] += r[k]; }); }
+      toast(packMsg(tot));
+    } catch (e) { toast(e.message && !/JSON/.test(e.message) ? e.message : 'Fichier invalide.'); }
+    ev.target.value = '';
   };
   document.getElementById('exp').onclick = () => {
     const blob = new Blob([JSON.stringify({ courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity, exportedAt: Date.now() }, null, 1)], { type: 'application/json' });
