@@ -35,7 +35,7 @@ const st = (extra = {}, nCards = 12) => ({ v: 2, settings: Object.assign({ level
   check('en-têtes : sw.js jamais mis en cache par le navigateur', v.headers.some(x => x.source === '/sw.js' && x.headers.some(k => k.key === 'Cache-Control' && /no-cache/.test(k.value))));
   check('vercel.json : fonction api/ai conservée', v.functions && v.functions['api/ai.js'].maxDuration === 60);
   // la CSP interdit les gestionnaires en ligne : il ne doit plus en rester
-  const srcs = ['index.html', 'app.js', 'chapter.js', 'cards.js', 'session.js', 'learn.js', 'exercise.js', 'pack.js', 'catalog.js', 'theme.js'].map(f => [f, fs.readFileSync(dir + f, 'utf8')]);
+  const srcs = ['index.html', 'app.js', 'chapter.js', 'cards.js', 'session.js', 'learn.js', 'exercise.js', 'pack.js', 'catalog.js', 'theme.js', 'speech.js'].map(f => [f, fs.readFileSync(dir + f, 'utf8')]);
   const inl = srcs.filter(([f, s]) => /\son(click|change|input|submit|load|error|keydown)\s*=\s*["']/.test(s)).map(x => x[0]);
   check('aucun gestionnaire d\'événement en ligne (onclick=…)', inl.length === 0, inl.join());
   check('aucune balise <script> en ligne', !/<script(?![^>]*\ssrc=)[^>]*>/.test(srcs[0][1]));

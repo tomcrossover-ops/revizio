@@ -1,13 +1,14 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.11'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.12'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
   francais: { label: 'Français', short: 'Franç.', emoji: '📖', color: '#db2777' },
   langues: { label: 'Anglais', short: 'Anglais', emoji: '🇬🇧', color: '#0d9488' },
   italien: { label: 'Italien', short: 'Italien', emoji: '🇮🇹', color: '#4f46e5' },
+  vietnamien: { label: 'Vietnamien', short: 'Vietnam.', emoji: '🇻🇳', color: '#b91c1c' },
   histgeo: { label: 'Histoire-Géo', short: 'Hist-Géo', emoji: '🌍', color: '#d97706' },
   svt: { label: 'SVT', short: 'SVT', emoji: '🌱', color: '#16a34a' },
   physique: { label: 'Physique-Chimie', short: 'Phys-Chi', emoji: '⚗️', color: '#7c3aed' },
@@ -41,7 +42,7 @@ const clip = (s, n) => { s = String(s ?? '').trim(); return s.length > n ? s.sli
 const subj = k => SUBJECTS[k] || SUBJECTS.autre;
 const subjChip = k => `<span class="tag" style="background:${subj(k).color}">${esc(subj(k).label)}</span>`;
 const tagChip = k => `<span class="chip">${esc(TAGS[k] || TAGS.definition)}</span>`;
-const normText = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const normText = s => String(s ?? '').toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const safeImg = s => (typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)) ? s : '';
 
 /* ---------- Dates ---------- */
@@ -119,7 +120,7 @@ function newCard(o) {
   const c = {
     id: uid(), subject: SUBJECTS[o.subject] ? o.subject : 'autre', chapter: String(o.chapter || '').trim(), courseId: o.courseId || null,
     tag, front: String(o.front || '').trim(), back: String(o.back || '').trim(), explain: String(o.explain || '').trim(),
-    reversible: !!o.reversible, image: safeImg(o.image) || null, emoji: cleanEmoji(o.emoji), createdAt: Date.now(), fwd: freshState(), rev: null,
+    reversible: !!o.reversible, image: safeImg(o.image) || null, emoji: cleanEmoji(o.emoji), say: o.say === false ? false : (typeof o.say === 'string' && o.say.trim() ? o.say.trim().slice(0, 120) : undefined), createdAt: Date.now(), fwd: freshState(), rev: null,
   };
   if (c.reversible) c.rev = freshState();
   return c;
@@ -151,7 +152,7 @@ const questionKey = q => { const { id, explanation, hint, level, skill, pitfall,
 function normCards(list, ctx) {
   return dedupe((list || []).map(c => {
     if (!c || !c.q || !c.a) return null;
-    return newCard({ subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId, tag: c.tag, front: clip(c.q, 200), back: clip(c.a, MAX_BACK), explain: clip(c.explain || '', 220), reversible: !!c.reversible, emoji: c.emoji });
+    return newCard({ subject: ctx.subject, chapter: ctx.chapter, courseId: ctx.courseId, tag: c.tag, front: clip(c.q, 200), back: clip(c.a, MAX_BACK), explain: clip(c.explain || '', 220), reversible: !!c.reversible, emoji: c.emoji, say: c.say });
   }).filter(Boolean), cardKey);
 }
 function removeCards(ids) {

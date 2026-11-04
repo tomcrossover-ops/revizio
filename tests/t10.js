@@ -30,7 +30,7 @@ const D = (y, m, d) => new Date(y, m - 1, d, 10); // heure locale
   await h.go('#/');
   check('accueil : invitation à créer le profil', !!$$('a').find(a => a.getAttribute('href') === '#/profile' && a.textContent.includes('Crée ton profil')));
   await h.go('#/profile');
-  check('profil : 8 avatars, 5 jours x 8 matières', $$('.av').length === 8 && $$('.tg').length === 40 && $$('.tg.on').length === 9, $$('.tg.on').length);
+  check('profil : 8 avatars, 5 jours x 9 matières', $$('.av').length === 8 && $$('.tg').length === 45 && $$('.tg.on').length === 9, $$('.tg.on').length);
   $$('.av')[2].click(); $('#name').value = 'Léo'; $('#level').value = '5e';
   const tgl = (d, k) => $$('.tg').find(b => b.dataset.d === d && b.dataset.k === k);
   tgl('1', 'svt').click(); tgl('5', 'histgeo').click();

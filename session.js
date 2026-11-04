@@ -168,7 +168,7 @@ function viewSession() {
   /* --- nouvelle notion : une partie de leçon à lire --- */
   const newStep = st => {
     const { c, idx } = st, sec = c.lesson[idx];
-    $app.innerHTML = `${head(st)}<div class="card"><h2 style="margin-top:0">${esc(sec.title)}</h2><div class="muted" style="margin:-6px 0 8px">${esc(c.title)}</div>${lessonBody(sec)}</div>
+    $app.innerHTML = `${head(st)}<div class="card"><h2 style="margin-top:0">${esc(sec.title)}</h2><div class="muted" style="margin:-6px 0 8px">${esc(c.title)}</div>${lessonBody(sec, c.subject)}</div>
       <button id="nx" style="width:100%">J'ai compris${S.steps[i + 1] && S.steps[i + 1].isNew ? ' — une question' : ''}</button>`;
     document.getElementById('nx').onclick = () => { c.lessonSeen = Array.from(new Set([...(c.lessonSeen || []), idx])); addXP(XP_GAIN.section); save(); next(); };
   };

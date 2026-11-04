@@ -2,9 +2,9 @@
 'use strict';
 
 const $app = document.getElementById('app');
-const sideHtml = s => (safeImg(s.image) ? `<img class="cimg" src="${safeImg(s.image)}" alt="">` : '') + (s.text ? `<div>${esc(s.text)}</div>` : '');
+const sideHtml = s => (safeImg(s.image) ? `<img class="cimg" src="${safeImg(s.image)}" alt="">` : '') + (s.text ? `<div>${esc(s.text)}</div>` : '') + (s.say ? sayBtns(s.say, s.subject) : '');
 function sides(card, dir) {
-  const f = { text: card.front, image: card.image }, b = { text: card.back, image: null };
+  const f = { text: card.front, image: card.image }, b = { text: card.back, image: null, say: sayText(card), subject: card.subject };
   return dir === 'fwd' ? { q: f, a: b } : { q: b, a: f };
 }
 const BONUS = ['Pourquoi ? Explique avec tes mots.', 'Donne un exemple.', 'À quoi cela sert-il ?'];

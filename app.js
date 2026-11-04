@@ -219,11 +219,11 @@ function fmt(s) { // lignes « - … » en puces, le reste en paragraphes
   flush();
   return out.join('');
 }
-const lessonBody = s => `${fmt(s.content)}${(s.examples || []).length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}`;
+const lessonBody = (s, subject) => `${fmt(s.content)}${(s.examples || []).length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}${sayBtns(e, subject)}</li>`).join('')}</ul></div>` : ''}`;
 function lessonHtml(c) {
   if (!c.lesson || !c.lesson.length) return '';
   return `<div class="card"><h2 style="margin-top:0">La leçon</h2>
-    ${c.lesson.map(s => `<h3>${esc(s.title)}</h3>${fmt(s.content)}${s.examples.length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}`).join('')}
+    ${c.lesson.map(s => `<h3>${esc(s.title)}</h3>${lessonBody(s, c.subject)}`).join('')}
     <p class="muted">Leçon générée par IA d'après le programme de ${esc(c.level || 'ta classe')}. Compare-la avec ton cahier : ton professeur a pu insister sur d'autres points.</p></div>`;
 }
 function viewGenerate(query) {

@@ -171,6 +171,15 @@ const CATALOG = {
       ['L\'école, la maison, les loisirs', 'vocabulaire, prépositions de lieu, there is / there are'],
       ['Nourriture et quantités', 'dénombrable/indénombrable, some/any, how much / how many'],
     ],
+    vietnamien: [
+      ['Saluer et se présenter', 'xin chào, tạm biệt, cảm ơn ; tôi tên là… ; bạn khỏe không ? ; nationalité'],
+      ['L\'alphabet et la prononciation', 'quốc ngữ : 29 lettres, voyelles ă â ê ô ơ ư, consonnes ph, th, kh, nh, ng, đ'],
+      ['Les six tons', 'ngang, huyền, sắc, hỏi, ngã, nặng ; ma, mà, má, mả, mã, mạ ; écouter et répéter'],
+      ['Pronoms et verbe être', 'tôi, bạn, anh, chị, em, ông, bà ; là et không phải là ; có … không ?'],
+      ['Les nombres et l\'âge', 'de 0 à 100 ; mốt et lăm ; bao nhiêu tuổi ? ; tôi … tuổi'],
+      ['La famille', 'bố, mẹ, anh, chị, em, ông, bà ; gia đình tôi có … người ; có / không có'],
+      ['Découvrir le Vietnam', 'Hà Nội, Sài Gòn, drapeau, đồng ; Hạ Long, Mê Kông ; phở, bánh mì, Tết, áo dài'],
+    ],
     techno: [
       ['Objets techniques et besoin', 'besoin, fonction d\'usage, fonction technique, évolution d\'un objet'],
       ['Matériaux et énergie', 'familles de matériaux, énergies, chaîne d\'énergie simple'],
@@ -242,6 +251,14 @@ const CATALOG = {
       ['Les verbes en -are', 'présent des verbes en -are (parlare, abitare, mangiare) ; négation avec non ; questions'],
       ['Les nombres, l\'âge et la famille', 'nombres de 0 à 100 ; ho … anni ; la famiglia ; qui est-ce ?'],
       ['Découvrir l\'Italie', 'carte, villes, régions, monuments, spécialités, drapeau, monnaie'],
+    ],
+    vietnamien: [
+      ['Passé, présent, futur : đã, đang, sẽ', 'verbes invariables ; marqueurs de temps ; chưa ; hôm qua, hôm nay, ngày mai'],
+      ['Les classificateurs', 'cái, con, quyển, người ; nombre + classificateur + nom ; này, đó ; adjectifs après le nom'],
+      ['Manger et boire', 'ăn, uống ; plats et boissons ; cho tôi… ; bao nhiêu tiền ? ; ngon quá'],
+      ['Poser des questions', 'gì, ai, ở đâu, khi nào, tại sao, bao nhiêu ; có … không ? ; phải không ?'],
+      ['Jours, mois et heures', 'thứ hai … chủ nhật ; tháng một … mười hai ; mấy giờ ? ; sáng, chiều, tối'],
+      ['L\'école', 'trường, lớp, thầy, cô ; matières ; sách, vở, bút ; tôi thích môn…'],
     ],
     techno: [
       ['Analyse d\'un objet technique', 'fonction, solutions techniques, évolution des objets'],

@@ -330,3 +330,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .choice.good::after { content: " ✔"; font-weight: 700; }
 .choice.bad::after { content: " ✘"; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+/* Écouter la prononciation */
+.sayrow { white-space: nowrap; margin-left: 8px; }
+button.say { padding: 2px 8px; margin-left: 4px; background: transparent; color: var(--link); border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; line-height: 1.4; font-weight: 400; }
+button.say:hover { background: var(--bg); }

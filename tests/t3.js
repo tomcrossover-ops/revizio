@@ -40,7 +40,7 @@ const dir = require('path').join(__dirname, '..') + '/';
   const missing = cached.filter(f => f !== './' && !fs.existsSync(dir + f));
   check('SW: tous les fichiers du cache hors ligne existent', missing.length === 0, missing.join(','));
   const html = fs.readFileSync(dir + 'index.html', 'utf8'); const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
-  check('index.html: scripts dans l\'ordre core, catalog, cards, app et tous en cache hors ligne', scripts.join() === 'core.js,theme.js,ai.js,catalog.js,learn.js,exercise.js,cards.js,session.js,pack.js,chapter.js,app.js' && scripts.every(s => cached.includes(s)), scripts.join());
+  check('index.html: scripts dans l\'ordre core, catalog, cards, app et tous en cache hors ligne', scripts.join() === 'core.js,theme.js,speech.js,ai.js,catalog.js,learn.js,exercise.js,cards.js,session.js,pack.js,chapter.js,app.js' && scripts.every(s => cached.includes(s)), scripts.join());
   check('index.html: lien « Cartes » dans la navigation', /href="#\/library"/.test(html));
   // ---- SW: délai réseau et icônes
   const mf = JSON.parse(fs.readFileSync(dir + 'manifest.webmanifest', 'utf8'));
