@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.13'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.14'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -9,6 +9,8 @@ const SUBJECTS = {
   langues: { label: 'Anglais', short: 'Anglais', emoji: '🇬🇧', color: '#0d9488' },
   italien: { label: 'Italien', short: 'Italien', emoji: '🇮🇹', color: '#4f46e5' },
   vietnamien: { label: 'Vietnamien', short: 'Vietnam.', emoji: '🇻🇳', color: '#b91c1c' },
+  espagnol: { label: 'Espagnol', short: 'Espagnol', emoji: '🇪🇸', color: '#ea580c' },
+  japonais: { label: 'Japonais', short: 'Japonais', emoji: '🇯🇵', color: '#be185d' },
   histgeo: { label: 'Histoire-Géo', short: 'Hist-Géo', emoji: '🌍', color: '#d97706' },
   svt: { label: 'SVT', short: 'SVT', emoji: '🌱', color: '#16a34a' },
   physique: { label: 'Physique-Chimie', short: 'Phys-Chi', emoji: '⚗️', color: '#7c3aed' },
@@ -50,7 +52,7 @@ const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const today = () => ymd(new Date());
 /* Rappel de sauvegarde : seulement s'il y a de quoi perdre, et pas plus d'une fois par semaine si on repousse. */
-const SPEECH_LANG = { langues: 'en-GB', italien: 'it-IT', vietnamien: 'vi-VN' };
+const SPEECH_LANG = { langues: 'en-GB', italien: 'it-IT', vietnamien: 'vi-VN', espagnol: 'es-ES', japonais: 'ja-JP' };
 const SPEECH_LANGS = Object.values(SPEECH_LANG);
 const BACKUP_EVERY_DAYS = 14, BACKUP_SNOOZE_DAYS = 7;
 function backupDue(now = Date.now()) {

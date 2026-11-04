@@ -1,0 +1,43 @@
+const { make, check, done } = require('./harness');
+const fs = require('fs');
+const P = __dirname + '/../packs/', pack = n => JSON.parse(fs.readFileSync(P + n, 'utf8'));
+(async () => {
+  const h = make({ store: { v: 2, settings: { level: '5e', apiKey: '', name: 'Léo' }, courses: [], cards: [], decks: [], activity: { days: [] } } });
+  const spoken = []; h.w.SpeechSynthesisUtterance = function (t) { this.text = t; };
+  h.w.speechSynthesis = { getVoices: () => [{ lang: 'es-ES', name: 'Monica', localService: true }, { lang: 'ja-JP', name: 'Kyoko', localService: true }], cancel() {}, speak: u => spoken.push(u) };
+  const T = h.t;
+  const files = ['5e-espagnol', '4e-espagnol', '3e-espagnol', '6e-japonais', '5e-japonais'];
+  const idx = pack('index.json').packs;
+  check('index : 5 nouveaux packs, 25 chapitres', files.every(f => idx.some(p => p.file === f + '.json')) && files.reduce((n, f) => n + pack(f + '.json').courses.length, 0) === 25);
+  let bad = [];
+  files.forEach(f => pack(f + '.json').courses.forEach(c => {
+    const types = new Set(c.questions.map(q => q.type));
+    if (c.cards.length < 8 || c.questions.length < 8 || types.size < 3 || !c.lesson.length || c.cards.some(k => !k.say)) bad.push(f + ' ' + c.title);
+    const cat = T.THEMES && 0; // (catalogue vérifié plus bas)
+    if (T.normQuestions(c.questions).length !== c.questions.length) bad.push('questions ' + c.title);
+    c.questions.filter(q => q.type === 'qcm').forEach(q => { if (new Set(q.choices).size !== q.choices.length) bad.push('doublon ' + c.title + ' ' + q.q); });
+  }));
+  check('chapitres complets (≥8 cartes lisibles, ≥8 questions, ≥3 types, leçon)', bad.length === 0, bad.slice(0, 5).join(' | '));
+  const CAT = new Function(fs.readFileSync(__dirname + '/../catalog.js', 'utf8') + ';return CATALOG;')();
+  const missing = [];
+  files.forEach(f => pack(f + '.json').courses.forEach(c => { if (!(CAT[c.level][c.subject] || []).some(x => x[0] === c.catalogTitle)) missing.push(c.title); }));
+  check('catalogue : chaque chapitre est listé', missing.length === 0, missing.join('|'));
+  const ja = pack('6e-japonais.json').courses[0], es = pack('5e-espagnol.json').courses[0];
+  check('japonais : dictée en rōmaji, kana accepté', ja.questions.some(q => q.type === 'short' && q.ecoute && /^[a-z ]+$/.test(q.answer) && q.accept.some(a => /[぀-ヿ]/.test(a)) && q.lang === 'ja-JP'));
+  check('espagnol : écoute en es-ES', es.questions.some(q => q.ecoute && q.lang === 'es-ES'));
+  T.importPack(pack('5e-espagnol.json')); T.importPack(pack('6e-japonais.json'));
+  const ec = T.db.courses.find(c => c.subject === 'espagnol'), jc = T.db.courses.find(c => c.subject === 'japonais');
+  await h.go('#/course/' + ec.id + '/lesson'); await h.wait(60);
+  h.$$('button.say')[0].click();
+  await h.go('#/course/' + jc.id + '/lesson'); await h.wait(60);
+  h.$$('button.say')[0].click();
+  check('lecture : es-ES puis ja-JP', spoken.length === 2 && spoken[0].lang === 'es-ES' && spoken[1].lang === 'ja-JP', JSON.stringify(spoken.map(s => s.lang)));
+  const jq = jc.questions.find(q => q.type === 'short' && q.ecoute);
+  const b = h.w.document.createElement('div'); h.w.document.body.appendChild(b); let r = null;
+  T.renderExercise(jq, b, ok => { r = ok; }); b.querySelector('#ans').value = jq.answer.toUpperCase(); b.querySelector('#chk').click();
+  check('japonais : réponse en rōmaji acceptée', r === true, jq.answer);
+  const core = fs.readFileSync(__dirname + '/../core.js', 'utf8');
+  check('matières : drapeaux 🇪🇸 et 🇯🇵', /espagnol: \{[^}]*🇪🇸/.test(core) && /japonais: \{[^}]*🇯🇵/.test(core));
+  check('aucune erreur JS', h.errors.length === 0, h.errors.join('|'));
+  done();
+})().catch(e => { console.error('CRASH', e); process.exit(1); });

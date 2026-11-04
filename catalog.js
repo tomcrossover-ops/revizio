@@ -180,6 +180,13 @@ const CATALOG = {
       ['La famille', 'bố, mẹ, anh, chị, em, ông, bà ; gia đình tôi có … người ; có / không có'],
       ['Découvrir le Vietnam', 'Hà Nội, Sài Gòn, drapeau, đồng ; Hạ Long, Mê Kông ; phở, bánh mì, Tết, áo dài'],
     ],
+    japonais: [
+      ['Saluer et remercier', 'Saluer, remercier et s\'excuser poliment en japonais, avec les rōmaji pour lire.'],
+      ['Se présenter', 'Se présenter en japonais avec watashi wa … desu.'],
+      ['Les nombres de 0 à 10', 'Compter de 0 à 10 et jusqu\'à 100 en japonais.'],
+      ['Les hiragana : a, ka, sa, ta, na', 'Lire les 25 premiers hiragana (lignes a, ka, sa, ta, na) et quelques mots.'],
+      ['La famille et les objets', 'Nommer sa famille et des objets du quotidien.'],
+    ],
     techno: [
       ['Objets techniques et besoin', 'besoin, fonction d\'usage, fonction technique, évolution d\'un objet'],
       ['Matériaux et énergie', 'familles de matériaux, énergies, chaîne d\'énergie simple'],
@@ -260,6 +267,20 @@ const CATALOG = {
       ['Jours, mois et heures', 'thứ hai … chủ nhật ; tháng một … mười hai ; mấy giờ ? ; sáng, chiều, tối'],
       ['L\'école', 'trường, lớp, thầy, cô ; matières ; sách, vở, bút ; tôi thích môn…'],
     ],
+    espagnol: [
+      ['Saludar y presentarse', 'Saluer, prendre congé, remercier et se présenter en espagnol.'],
+      ['Los números y la edad', 'Compter jusqu\'à 100 et dire son âge en espagnol.'],
+      ['La familia', 'Présenter sa famille et décrire ses proches en espagnol.'],
+      ['El colegio y los colores', 'Parler du collège, du matériel scolaire et des couleurs en espagnol.'],
+      ['Ser, tener y llamarse', 'Conjuguer ser, tener et llamarse au présent.'],
+    ],
+    japonais: [
+      ['Les katakana et les mots empruntés', 'Lire les katakana et reconnaître des mots venus d\'autres langues.'],
+      ['Les jours et le temps', 'Dire les jours de la semaine et situer dans le temps.'],
+      ['Manger et boire', 'Parler de nourriture et de boissons en japonais.'],
+      ['Les particules は, を, の, に', 'Comprendre les petits mots qui organisent la phrase japonaise.'],
+      ['Questions et démonstratifs', 'Poser des questions et désigner avec kore, sore, are.'],
+    ],
     techno: [
       ['Analyse d\'un objet technique', 'fonction, solutions techniques, évolution des objets'],
       ['Réaliser un projet', 'cahier des charges, maquette, prototype, essais'],
@@ -332,6 +353,13 @@ const CATALOG = {
       ['Adjectifs, possessifs, démonstratifs', 'accord des adjectifs ; place ; il mio, la tua… ; famille sans article ; questo / quello'],
       ['Au café, au restaurant, au magasin', 'vorrei, prendo ; il conto ; quanto costa ? ; partitif ; politesse'],
     ],
+    espagnol: [
+      ['La casa', 'Décrire sa maison et situer les objets dans l\'espace.'],
+      ['La comida y el restaurante', 'Parler de nourriture, commander au restaurant et payer.'],
+      ['La hora y la rutina', 'Dire l\'heure et raconter sa journée avec des verbes pronominaux.'],
+      ['El presente: verbos regulares e ir', 'Conjuguer les verbes réguliers en -ar, -er, -ir et le verbe ir.'],
+      ['Me gusta: gustos y aficiones', 'Dire ce que l\'on aime ou n\'aime pas et parler de ses loisirs.'],
+    ],
     techno: [
       ['Conception d\'un objet', 'idée, cahier des charges, modélisation 3D'],
       ['Programmation et objets connectés', 'variables, capteurs, actionneurs, réseau'],
@@ -398,6 +426,13 @@ const CATALOG = {
       ['Verbes pronominaux et routine', 'alzarsi, lavarsi, vestirsi ; pronoms réfléchis ; passato prossimo avec essere ; la journée'],
       ['Les pronoms compléments', 'lo, la, li, le ; mi, ti, gli, le, ci, vi ; place devant le verbe ; ci et ne simples'],
       ['Comparer et donner son avis', 'più … di / che ; meno ; come ; il più ; mi piace / mi piacciono ; secondo me, penso che'],
+    ],
+    espagnol: [
+      ['El pasado: perfecto e indefinido', 'Raconter des faits passés avec le pretérito perfecto et le pretérito indefinido.'],
+      ['La ciudad y las direcciones', 'Se repérer en ville, demander et indiquer son chemin.'],
+      ['Los viajes y las vacaciones', 'Parler de voyages, de transports et de vacances.'],
+      ['El futuro: ir a y planes', 'Parler de projets et du futur proche.'],
+      ['Opinar y expresar la obligación', 'Donner son opinion, être d\'accord ou non, exprimer l\'obligation.'],
     ],
     techno: [
       ['Projet technologique', 'cahier des charges, conception, prototype, tests'],

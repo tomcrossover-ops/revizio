@@ -1,8 +1,8 @@
 /* Révizio — écouter la prononciation (synthèse vocale du navigateur, rien n'est envoyé nulle part).
-   Les voix viennent de l'appareil : si l'italien ou le vietnamien manque, il faut l'ajouter dans les réglages de voix du système. */
+   Les voix viennent de l'appareil : si l'italien, le vietnamien, l'espagnol ou le japonais manque, il faut l'ajouter dans les réglages de voix du système. */
 'use strict';
 
-const SPEECH_NAME = { en: "d'anglais", it: "d'italien", vi: 'de vietnamien' };
+const SPEECH_NAME = { en: "d'anglais", it: "d'italien", vi: 'de vietnamien', es: "d'espagnol", ja: 'de japonais' };
 const speechOK = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
 
 /* Texte à lire pour une carte : le champ « say » s'il existe (say:false = jamais) ; pour l'italien seulement, à défaut, le verso s'il ressemble à de l'italien. */
