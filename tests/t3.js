@@ -42,5 +42,24 @@ const dir = require('path').join(__dirname, '..') + '/';
   const html = fs.readFileSync(dir + 'index.html', 'utf8'); const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   check('index.html: scripts dans l\'ordre core, catalog, cards, app et tous en cache hors ligne', scripts.join() === 'core.js,theme.js,ai.js,catalog.js,learn.js,exercise.js,cards.js,session.js,pack.js,chapter.js,app.js' && scripts.every(s => cached.includes(s)), scripts.join());
   check('index.html: lien « Cartes » dans la navigation', /href="#\/library"/.test(html));
+  // ---- SW: délai réseau et icônes
+  const mf = JSON.parse(fs.readFileSync(dir + 'manifest.webmanifest', 'utf8'));
+  check('manifeste: icônes PNG 192, 512 et maskable présentes', ['192x192', '512x512'].every(z => mf.icons.some(i => i.sizes === z && i.type === 'image/png' && i.purpose === 'any')) && mf.icons.some(i => i.purpose === 'maskable' && i.type === 'image/png') && mf.icons.every(i => fs.existsSync(dir + i.src)));
+  check('index.html: apple-touch-icon en PNG', /apple-touch-icon" href="apple-touch-icon\.png"/.test(html) && fs.existsSync(dir + 'apple-touch-icon.png'));
+  async function swFetch(netDelay, netFails, cachedRes) {
+    const hs = {}; const put = [];
+    const c2 = { self: { addEventListener: (t, f) => { hs[t] = f; }, clients: { claim: async () => {} } }, setTimeout, Response: { error: () => 'ERR' },
+      caches: { open: async () => ({ put: async () => { put.push(1); } }), match: async () => cachedRes },
+      URL, location: { origin: 'http://localhost' },
+      fetch: () => new Promise((res, rej) => setTimeout(() => netFails ? rej(new Error('off')) : res({ ok: true, clone: () => 'c', tag: 'NET' }), netDelay)) };
+    vm.createContext(c2); vm.runInContext(swSrc.replace('NET_TIMEOUT = 4000', 'NET_TIMEOUT = 60'), c2);
+    let out; hs.fetch({ request: { method: 'GET', url: 'http://localhost/app.js' }, respondWith: p => { out = p; } });
+    const r = await out; return { r, put: put.length };
+  }
+  let o = await swFetch(5, false, 'CACHE'); check('SW: réseau rapide -> réponse réseau, copie mise à jour', o.r.tag === 'NET' && o.put === 1);
+  o = await swFetch(300, false, 'CACHE'); check('SW: réseau lent (> délai) + copie -> copie servie', o.r === 'CACHE');
+  o = await swFetch(150, false, undefined); check('SW: réseau lent sans copie -> on attend le réseau', o.r.tag === 'NET');
+  o = await swFetch(5, true, 'CACHE'); check('SW: hors ligne -> copie', o.r === 'CACHE');
+  o = await swFetch(5, true, undefined); check('SW: hors ligne sans copie -> erreur réseau propre', o.r === 'ERR');
   done();
 })().catch(e => { console.error('CRASH', e); process.exit(1); });
