@@ -27,9 +27,13 @@ const routes = [
   [/^\/card\/(\w+)$/, viewCardForm],
   [/^\/settings$/, viewSettings],
 ];
+/* Menus qui dépendent de l'IA : visibles seulement avec une clé API */
+function syncAiUi() { document.querySelectorAll('[data-ai]').forEach(a => { a.hidden = !hasAI(); }); }
 function route() {
   const path = location.hash.replace(/^#/, '') || '/';
   const area = path.startsWith('/new') || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
+  syncAiUi();
+  if ((path.startsWith('/new') || path === '/import') && !hasAI()) { location.hash = '#/'; return; } // pages de création : réservées à l'IA
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === area));
   for (const [re, fn] of routes) {
     const m = path.match(re);
@@ -82,7 +86,6 @@ function viewHome() {
     ${subjectGrid()}
     ${statusHtml()}
     ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
-    ${!db.settings.apiKey ? `<div class="card"><b>Première étape :</b> ajoute ta clé API dans les <a href="#/settings">Réglages</a> pour que Révizio puisse créer des cours et des cartes. Tu peux déjà <a href="#/card/new">créer des cartes à la main</a>.</div>` : ''}
     <div class="card hero">${due
       ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">${esc(tx('session_btn'))}</a>`
       : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}</div>
@@ -99,7 +102,7 @@ function viewHome() {
       <div class="card stat"><b>🔥 ${streak()}</b><span class="muted">jour${streak() > 1 ? 's' : ''} de suite</span></div>
     </div>
     <div class="row" style="margin-bottom:12px">
-      <a class="btn" href="#/new">+ Nouveau cours</a>
+      ${hasAI() ? '<a class="btn" href="#/new">+ Nouveau cours</a>' : ''}
       <a class="btn ghost" href="#/card/new">+ Carte</a>
     </div>
     ${db.decks.length ? `<h2>Mes paquets</h2>${db.decks.map(d => {
@@ -118,7 +121,7 @@ function viewCourses() {
   const levels = LEVELS.filter(l => db.courses.some(c => c.level === l));
   const subjects = Object.keys(SUBJECTS).filter(k => db.courses.some(c => c.subject === k));
   $app.innerHTML = `
-    <div class="row between"><h1>Mes cours</h1><a class="btn" href="#/new">+ Nouveau</a></div>
+    <div class="row between"><h1>Mes cours</h1>${hasAI() ? '<a class="btn" href="#/new">+ Nouveau</a>' : ''}</div>
     ${db.courses.length ? `<div class="row2">
       <select id="fl"><option value="">Toutes les classes</option>${levels.map(l => `<option>${l}</option>`).join('')}</select>
       <select id="fs"><option value="">Toutes les matières</option>${subjects.map(k => `<option value="${k}">${esc(SUBJECTS[k].label)}</option>`).join('')}</select>
@@ -129,7 +132,7 @@ function viewCourses() {
     const list = db.courses.filter(c => (!st.level || c.level === st.level) && (!st.subject || c.subject === st.subject) && (!q || normText(c.title).includes(q)))
       .sort((a, b) => b.createdAt - a.createdAt);
     document.getElementById('list').innerHTML = list.length ? list.map(courseCard).join('')
-      : `<div class="card muted">${db.courses.length ? 'Aucun cours ne correspond.' : 'Aucun cours pour l\'instant. <a href="#/new">Crée ton premier cours</a> ou <a href="#/import">importe le tien</a>.'}</div>`;
+      : `<div class="card muted">${db.courses.length ? 'Aucun cours ne correspond.' : (hasAI() ? 'Aucun cours pour l\'instant. <a href="#/new">Crée ton premier cours</a> ou <a href="#/import">importe le tien</a>.' : 'Aucun cours pour l\'instant. Ouvre une matière depuis l\'accueil : les chapitres prêts s\'ajoutent tout seuls.')}</div>`;
   };
   if (db.courses.length) {
     document.getElementById('fl').onchange = e => { st.level = e.target.value; draw(); };
@@ -146,7 +149,7 @@ function prepHtml() {
   const rows = subjects.map(k => {
     const due = dueItems(x => x.subject === k).length, has = db.courses.some(c => c.subject === k), sug = suggestChapter(level, k);
     return `<div class="prep-row"><div class="row between">${subjChip(k)}<span class="muted">${has ? (due ? `<b>${due} carte${due > 1 ? 's' : ''} à revoir</b>` : 'à jour') : 'aucun cours'}</span></div>
-      <div class="row" style="margin-top:6px">${due ? `<a class="btn small" href="#/review/subject/${k}">Réviser</a>` : ''}${sug ? `<a class="btn ghost small" href="#/new?subject=${k}&ch=${sug.i}">Chapitre suivant : ${esc(sug.title)}</a>` : `<a class="btn ghost small" href="#/new?subject=${k}">Nouveau chapitre</a>`}</div></div>`;
+      <div class="row" style="margin-top:6px">${due ? `<a class="btn small" href="#/review/subject/${k}">Réviser</a>` : ''}${hasAI() ? (sug ? `<a class="btn ghost small" href="#/new?subject=${k}&ch=${sug.i}">Chapitre suivant : ${esc(sug.title)}</a>` : `<a class="btn ghost small" href="#/new?subject=${k}">Nouveau chapitre</a>`) : `<a class="btn ghost small" href="#/subject/${k}">Ouvrir les chapitres</a>`}</div></div>`;
   }).join('');
   const prepDow = days.map(d => d.dow);
   const grid = `<div class="week">${WEEK.map(([d, n]) => `<div class="wd${d === today ? ' today' : ''}${prepDow.includes(d) ? ' prep' : ''}"><b>${n.slice(0, 3)}</b>${subjectsOfDay(d).map(k => `<span class="ws" style="--sc:${SUBJECTS[k].color}" title="${esc(SUBJECTS[k].label)}">${SUBJECTS[k].emoji}<small>${esc(SUBJECTS[k].short)}</small></span>`).join('')}</div>`).join('')}</div>`;
@@ -483,7 +486,7 @@ function viewSettings() {
   sel.onchange = () => { cm.hidden = sel.value !== '__custom'; if (!cm.hidden) cm.focus(); };
   const read = () => {
     s.name = document.getElementById('name').value.trim(); s.apiKey = document.getElementById('key').value.trim();
-    s.model = sel.value === '__custom' ? (cm.value.trim() || P.models[0][0]) : sel.value; s.bonus = document.getElementById('bonus').checked; save();
+    s.model = sel.value === '__custom' ? (cm.value.trim() || P.models[0][0]) : sel.value; s.bonus = document.getElementById('bonus').checked; save(); syncAiUi();
   };
   document.getElementById('theme').onchange = ev => { s.theme = ev.target.value; save(); applyTheme(); toast('Apparence changée ✔'); };
   document.getElementById('provider').onchange = ev => { read(); switchProvider(ev.target.value); save(); viewSettings(); };

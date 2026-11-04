@@ -64,6 +64,8 @@ async function readError(res, name) {
   if (res.status === 413) m = 'Fichiers trop lourds pour le relais : utilise moins de photos ou colle le texte.';
   return new Error(typeof m === 'string' ? m : JSON.stringify(m));
 }
+/* L'IA n'est proposée que si une clé API est renseignée */
+const hasAI = () => !!String((db.settings && db.settings.apiKey) || '').trim();
 const TOO_LONG = 'La réponse était trop longue et a été coupée. Réessaie, ou précise un chapitre plus petit.';
 
 async function callClaude(content, maxTokens = 6000, system = SYSTEM) { // nom conservé : fonctionne avec le fournisseur choisi

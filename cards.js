@@ -184,7 +184,7 @@ function viewCardForm(id) {
   });
   const offerSplit = () => {
     const box = $('split');
-    if (!db.settings.apiKey) { box.innerHTML = '<p class="muted">Astuce : avec une clé API (Réglages), Révizio peut découper cette carte en plusieurs cartes courtes.</p>'; return; }
+    if (!hasAI()) { box.innerHTML = ''; return; }
     box.innerHTML = '<div class="card"><b>Carte trop longue ?</b> Une carte = une seule idée.<div class="row" style="margin-top:8px"><button type="button" id="dosplit">Découper en plusieurs cartes</button><span id="sst"></span></div><div id="sres"></div></div>';
     $('dosplit').onclick = async () => {
       $('dosplit').disabled = true; $('sst').innerHTML = '<span class="spinner"></span>';

@@ -16,12 +16,11 @@ function viewSubject(key) {
   const cat = chaptersFor(lvl, key).map((ch, i) => ({ i, title: ch[0], notions: ch[1] })).filter(ch => !db.courses.some(c => c.subject === key && c.catalogTitle === ch.title));
   $app.innerHTML = `${backLink('#/', 'Accueil')}
     <div class="row between"><h1>${esc(s.emoji)} ${esc(s.label)}</h1><select id="lvl" aria-label="Classe" style="width:auto">${LEVELS.map(l => `<option ${l === lvl ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    ${!db.settings.apiKey ? `<div class="card">Pour préparer un nouveau chapitre, ajoute ta clé API dans les <a href="#/settings">Réglages</a>.</div>` : ''}
     ${mine.length ? `<h2>Mes chapitres</h2>${mine.map(courseCard).join('')}` : ''}
     <h2>Chapitres du programme · ${esc(lvl)}</h2>
-    ${cat.length ? cat.map(ch => `<a class="card course" data-title="${esc(ch.title)}" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}&ch=${ch.i}&go=1" style="--sc:${s.color}"><div class="row between"><b>${esc(ch.title)}</b><span class="chip">✨ Préparer</span></div><div class="muted">${esc(clip(ch.notions, 110))}</div></a>`).join('')
-      : `<div class="card muted">${chaptersFor(lvl, key).length ? 'Tous les chapitres du programme sont déjà préparés. Bravo !' : 'Pas de chapitres prédéfinis pour cette classe.'}</div>`}
-    <a class="btn ghost" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}">Autre chapitre…</a>`;
+    ${cat.length && hasAI() ? cat.map(ch => `<a class="card course" data-title="${esc(ch.title)}" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}&ch=${ch.i}&go=1" style="--sc:${s.color}"><div class="row between"><b>${esc(ch.title)}</b><span class="chip">✨ Préparer</span></div><div class="muted">${esc(clip(ch.notions, 110))}</div></a>`).join('')
+      : `<div class="card muted">${!chaptersFor(lvl, key).length ? 'Pas de chapitres prédéfinis pour cette classe.' : cat.length ? 'Pas de chapitre prêt pour cette classe. Reviens plus tard !' : 'Tous les chapitres du programme sont déjà là. Bravo !'}</div>`}
+    ${hasAI() ? `<a class="btn ghost" href="#/new?subject=${key}&level=${encodeURIComponent(lvl)}">Autre chapitre…</a>` : ''}`;
   document.getElementById('lvl').onchange = ev => { db.settings.level = ev.target.value; save(); viewSubject(key); };
   // chapitres déjà écrits (packs) : ajoutés directement, sans clic ni IA
   autoImportReady(lvl, key).then(r => {
@@ -82,7 +81,7 @@ function viewCourse(id) {
       ${c.scores.length ? `<div class="muted" style="margin-top:8px">Mes bilans : ${c.scores.slice(-4).reverse().map(s => `${s.score}/${s.total} (${fmtDate(s.date)})`).join(' · ')}</div>` : ''}</div>` : ''}
     ${mistakes.length ? `<h2>Mes dernières erreurs</h2><div class="card">${mistakes.map(x => `<div style="margin-bottom:8px"><div class="muted">${fmtDate(x.date)} · ${esc(x.skill)}</div><b>${esc(x.q)}</b><div>Réponse : ${esc(x.answer)}</div></div>`).join('')}${weakQuestions(c).length ? `<a class="btn ghost" href="#/train/${id}/target">Exercices ciblés</a>` : ''}</div>` : ''}
     <div class="row" style="margin-top:12px">
-      <button class="ghost" id="more">Générer d'autres exercices</button>
+      ${hasAI() ? `<button class="ghost" id="more">Générer d'autres exercices</button>` : ''}
       <button class="danger" id="del">Supprimer ce chapitre</button>
       <span id="st"></span>
     </div>`;
@@ -91,7 +90,8 @@ function viewCourse(id) {
       removeCards(cardsOf(id).map(x => x.id)); db.courses = db.courses.filter(x => x.id !== id); save(); location.hash = '#/subject/' + c.subject;
     }
   };
-  document.getElementById('more').onclick = async () => {
+  const moreBtn = document.getElementById('more');
+  if (moreBtn) moreBtn.onclick = async () => {
     const st = document.getElementById('st'), btn = document.getElementById('more');
     btn.disabled = true; st.innerHTML = '<span class="spinner"></span> Génération…';
     try { await generateMore(c); toast('Nouveaux exercices ajoutés ✔'); viewCourse(id); }
@@ -186,7 +186,7 @@ function viewTrain(id, mode) {
         ${wrong.length ? `<button class="act" id="seeErr"><span class="ai">🔍</span><span class="at"><b>Revoir mes erreurs</b><small>${plural(wrong.length, 'question')} avec explication</small></span></button>` : ''}
         ${weakQuestions(c).length ? `<button class="act rec" id="targ"><span class="ai">🎯</span><span class="at"><b>Exercices ciblés</b><small>5 exercices sur tes notions fragiles</small></span></button>` : ''}
         <button class="act" id="again"><span class="ai">🔁</span><span class="at"><b>Recommencer</b><small>Un nouveau quiz tout de suite</small></span></button>
-        <button class="act" id="gen"><span class="ai">✨</span><span class="at"><b>Nouvelles questions</b><small>L'IA en crée sur ${weak.length ? 'tes notions à revoir' : 'ce chapitre'}</small></span></button>
+        ${hasAI() ? `<button class="act" id="gen"><span class="ai">✨</span><span class="at"><b>Nouvelles questions</b><small>L'IA en crée sur ${weak.length ? 'tes notions à revoir' : 'ce chapitre'}</small></span></button>` : ''}
         <a class="act" href="#/review/course/${id}"><span class="ai">🃏</span><span class="at"><b>Mes flashcards</b><small>Réviser les cartes du chapitre</small></span></a>
       </div><div id="gst"></div>
       <div id="errs" hidden>${wrong.map(q => `<div class="card"><b>${qHtml(q)}</b><div class="muted">Réponse : ${esc(answerText(q))}</div>${q.explanation ? `<div class="explain">${esc(q.explanation)}</div>` : ''}${q.pitfall ? `<div class="explain"><b>Erreur fréquente :</b> ${esc(q.pitfall)}</div>` : ''}</div>`).join('')}</div>
@@ -195,7 +195,8 @@ function viewTrain(id, mode) {
     if (se) se.onclick = () => { const e = document.getElementById('errs'); e.hidden = !e.hidden; if (!e.hidden && e.scrollIntoView) e.scrollIntoView({ behavior: 'smooth' }); };
     const tg = document.getElementById('targ'); if (tg) tg.onclick = () => viewTrain(id, 'target');
     document.getElementById('again').onclick = () => viewTrain(id);
-    document.getElementById('gen').onclick = async () => {
+    const genBtn = document.getElementById('gen');
+    if (genBtn) genBtn.onclick = async () => {
       const b = document.getElementById('gen'), st = document.getElementById('gst'); b.disabled = true; st.innerHTML = '<span class="spinner"></span> Création de nouvelles questions…';
       try { const r = await generateMore(c, weak.map(x => x.name).join(', ')); toast(`${plural(r.questions, 'question')} ajoutée${r.questions > 1 ? 's' : ''} ✔`); viewTrain(id); }
       catch (e) { st.innerHTML = `<span class="err">${esc(e.message)}</span>`; b.disabled = false; }
