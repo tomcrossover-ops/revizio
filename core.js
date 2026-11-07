@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.21'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.22'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -107,7 +107,7 @@ function save() {
   catch (e) { toast('Stockage plein : exporte tes données depuis les Réglages.'); }
 }
 /* ---------- Sauvegarde complète ---------- */
-const BACKUP_SETTINGS = ['name', 'avatar', 'theme', 'schedule', 'profileDone', 'level', 'bonus', 'micro', 'packDone']; // jamais la clé API
+const BACKUP_SETTINGS = ['name', 'avatar', 'theme', 'schedule', 'profileDone', 'level', 'bonus', 'micro', 'packDone', 'reports']; // jamais la clé API
 function backupData() {
   const settings = {}; BACKUP_SETTINGS.forEach(k => { if (db.settings[k] !== undefined) settings[k] = db.settings[k]; });
   return { format: 'revizio-backup', version: 2, app: APP_VERSION, exportedAt: Date.now(), settings, courses: db.courses, cards: db.cards, decks: db.decks, activity: db.activity };

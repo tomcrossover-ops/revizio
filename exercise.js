@@ -80,6 +80,20 @@ function answerText(q) {
   return String(q.answer);
 }
 
+/* ---------- Signaler une erreur (gardé sur l'appareil, copiable depuis Réglages) ---------- */
+function addReportBtn(q, body) {
+  if (!body.isConnected || body.querySelector('.reportbtn')) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost small reportbtn'; b.textContent = '⚠️ Signaler une erreur';
+  const nx = body.querySelector('#nx'), anchor = nx ? (nx.closest('.actbar') || nx) : null;
+  if (anchor && anchor.parentNode === body) body.insertBefore(b, anchor); else body.appendChild(b);
+  b.onclick = () => {
+    const c = db.courses.find(x => (x.questions || []).some(y => y.q === q.q));
+    const list = db.settings.reports = db.settings.reports || [];
+    list.push({ at: Date.now(), course: c ? c.title : '', subject: c ? c.subject : '', type: q.type, q: q.q, answer: answerText(q), explanation: q.explanation || '' });
+    save(); b.disabled = true; b.textContent = 'Merci, signalé ✔'; toast('Signalé : tu pourras l\'envoyer depuis Réglages.');
+  };
+}
+
 /* ---------- Dessin d'un exercice ---------- */
 function renderExercise(q, body, done) {
   let tries = 0, hinted = false, over = false, kb = null;
@@ -93,6 +107,7 @@ function renderExercise(q, body, done) {
       if (b) body.insertAdjacentHTML('beforeend', `<div class="sayafter muted">Écoute la bonne réponse ${b}</div>`);
     }
     done(ok, { tries, hint: hinted });
+    setTimeout(() => addReportBtn(q, body), 0); // après l'explication : « Signaler une erreur » juste avant « Suivant »
   };
   const hint = hintOf(q);
   const hintBox = document.createElement('div');

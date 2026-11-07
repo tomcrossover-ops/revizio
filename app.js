@@ -576,6 +576,7 @@ function viewSettings() {
     <div class="card"><div class="muted" style="margin-bottom:8px">Des chapitres déjà écrits (leçon, cartes, exercices) : les ajouter ne coûte aucun appel à l'IA. Ils sont aussi proposés directement dans chaque matière.</div>
       <div id="packs"><span class="muted">Chargement…</span></div>
       <label class="btn ghost" style="margin:10px 0 0">Importer un fichier de cours (.json)<input id="impPack" type="file" accept="application/json" multiple hidden></label></div>
+    ${(db.settings.reports || []).length ? `<h2>Erreurs signalées <span class="muted">${db.settings.reports.length}</span></h2><div class="card row"><div class="muted" style="flex-basis:100%">Questions que tu as trouvées bizarres. Copie la liste et envoie-la pour qu'elles soient corrigées.</div><button class="ghost" id="repCopy">Copier la liste</button><button class="danger" id="repClear">Vider</button></div>` : ''}
     <h2>Sauvegarde complète</h2>
     <div class="card row">
       <button class="ghost" id="exp">Exporter mes données</button>
@@ -596,6 +597,12 @@ function viewSettings() {
     const r = await pingProvider();
     st.innerHTML = r.ok ? `<b style="color:var(--ok)">${esc(r.msg)}</b>` : `<span class="err">${esc(r.msg)}</span>`;
   };
+  const rc = document.getElementById('repCopy'), rx = document.getElementById('repClear');
+  if (rc) rc.onclick = async () => {
+    const txt = db.settings.reports.map((r, i) => `${i + 1}. [${r.subject || '?'} / ${r.course || '?'}] ${r.q}\n   Réponse attendue : ${r.answer}`).join('\n');
+    try { await navigator.clipboard.writeText(txt); toast('Liste copiée ✔'); } catch (e) { toast('Copie impossible : ' + e.message); }
+  };
+  if (rx) rx.onclick = () => { if (window.confirm('Vider la liste des erreurs signalées ?')) { db.settings.reports = []; save(); viewSettings(); } };
   document.getElementById('updCheck').onclick = async () => {
     if (!swReg) return toast('Les mises à jour ne sont pas disponibles dans ce mode.');
     try {
