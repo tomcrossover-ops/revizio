@@ -5,6 +5,8 @@
 const routes = [
   [/^\/?$/, viewHome],
   [/^\/courses$/, viewCourses],
+  [/^\/revise$/, viewRevise],
+  [/^\/progress$/, viewProgress],
   [/^\/new(?:\?(.*))?$/, viewGenerate],
   [/^\/profile$/, viewProfile],
   [/^\/path\/(\w+)\/cards$/, id => viewReview('course', id, { path: true, limit: 8 })],
@@ -31,7 +33,7 @@ const routes = [
 function syncAiUi() { document.querySelectorAll('[data-ai]').forEach(a => { a.hidden = !hasAI(); }); }
 function route() {
   const path = location.hash.replace(/^#/, '') || '/';
-  const area = path.startsWith('/new') || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
+  const area = /^\/(courses|new|import|course\/)/.test(path) ? 'courses' : /^\/(revise|library|card\/|subject\/|pack\/|review|daily|path\/)/.test(path) ? 'revise' : path === '/progress' ? 'progress' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
   syncAiUi();
   document.body.classList.toggle('focus', /^\/(quiz\/|train\/|daily\/run$|daily\/quiz$)/.test(path)); // pendant un exercice : pas de menu, un bouton Quitter
   if ((path.startsWith('/new') || path === '/import') && !hasAI()) { location.hash = '#/'; return; } // pages de création : réservées à l'IA
@@ -115,48 +117,89 @@ function exportData() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `revizio-${today()}.json`; a.click();
   db.settings.lastBackup = Date.now(); save(); toast('Sauvegarde enregistrée ✔');
 }
+/* Une seule action principale : cartes dues → séance du jour → reprendre le dernier chapitre → choisir une matière */
+function nextStep() {
+  const due = dueItems().length;
+  if (due) return { href: '#/review', ico: '🃏', title: `Réviser ${due} carte${due > 1 ? 's' : ''}`, sub: `À revoir aujourd'hui · ≈ ${Math.max(1, Math.round(due * 0.4))} min` };
+  const S = buildSession();
+  if (S.total) { const rec = recommend(); return { href: '#/daily', ico: '🎯', title: tx('daily_title'), sub: `≈ ${S.minutes} min · ${S.total} étapes${rec ? ' · ' + rec : ''}` }; }
+  const last = db.courses.filter(c => courseMastery(c) !== 'maitrise').sort((x, y) => lastSeen(y) - lastSeen(x))[0];
+  if (last) return { href: '#/course/' + last.id, ico: '▶️', title: 'Reprendre mon chapitre', sub: last.title };
+  return { href: '#/revise', ico: '📘', title: 'Choisir une matière', sub: 'Commence par un chapitre de ton programme' };
+}
+const homeSubjectKeys = () => { // matières de l'emploi du temps (et celles déjà travaillées) ; les autres sont repliées
+  const all = Object.keys(SUBJECTS).filter(k => k !== 'autre');
+  if (!hasSchedule()) return { main: all, other: [] };
+  const week = new Set(); WEEK.forEach(([d]) => subjectsOfDay(d).forEach(k => week.add(k)));
+  const main = all.filter(k => week.has(k) || db.courses.some(c => c.subject === k));
+  return { main, other: all.filter(k => !main.includes(k)) };
+};
+function subjTiles(keys) {
+  const prep = prepSubjects();
+  return `<div class="grid subjgrid">${keys.map(k => {
+    const s = SUBJECTS[k], n = db.courses.filter(c => c.subject === k).length;
+    return `<a class="card tile subj" href="#/subject/${k}" style="--sc:${s.color}"><span class="ico">${s.emoji}</span><b>${esc(s.short)}</b><span class="muted">${n ? plural(n, 'chapitre') : 'à découvrir'}</span>${prep.includes(k) ? '<span class="prepflag" title="À préparer pour les prochains jours de cours">⭐</span>' : ''}</a>`;
+  }).join('')}</div>`;
+}
+function homeBanner() { // un seul bandeau à la fois, toujours fermable
+  if (!db.settings.profileDone && !(db.settings.profileSnooze > Date.now())) return `<div class="card banner" id="pf" role="region" aria-label="Profil"><div><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer.</div></div><div class="row"><a class="btn small" href="#/profile">Créer</a><button class="ghost small" id="pfLater" aria-label="Masquer">✕</button></div></div>`;
+  if (backupDue()) return `<div class="card banner" id="bk" role="region" aria-label="Rappel de sauvegarde"><div><b>💾 Pense à sauvegarder</b><div class="muted">${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '.' : 'Tu n\'as encore jamais sauvegardé.'}</div></div><div class="row"><button class="small" id="bkNow">Sauvegarder</button><button class="ghost small" id="bkLater" aria-label="Plus tard">✕</button></div></div>`;
+  return '';
+}
 function viewHome() {
-  const due = dueItems().length, total = db.cards.length;
-  const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir' && !(isPackCard(c) && dirsOf(c).every(d => isNewState(stateOf(c, d))))).length, reserve = reserveCount();
   const hello = db.settings.name ? `Salut ${esc(db.settings.name)} ${esc(db.settings.avatar || '🥷')}` : `${esc(tx('hello_new'))} ${esc(db.settings.avatar || '🥷')}`;
+  const n = nextStep(), p = playerStats(), sj = homeSubjectKeys(), total = db.cards.length;
   $app.innerHTML = `
     <h1>${hello}</h1>
-    ${subjectGrid()}
-    ${statusHtml()}
-    ${!db.settings.profileDone ? `<a class="card course" href="#/profile"><b>👤 Crée ton profil</b><div class="muted">Ta classe et ton emploi du temps : Révizio te dit quoi préparer en priorité.</div></a>` : ''}
-    <div class="card hero">${due
-      ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">${esc(tx('session_btn'))}</a>`
-      : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${total ? '' : ' — crée ta première carte !'}</div>`}
-      ${reserve ? `<div class="muted" style="margin-top:8px">+ ${reserve} nouvelle${reserve > 1 ? 's' : ''} carte${reserve > 1 ? 's' : ''} arrivent les prochains jours (${NEW_PER_DAY} par jour)</div>` : ''}</div>
-    ${prepHtml()}
-    ${backupDue() ? `<div class="card" id="bk" role="region" aria-label="Rappel de sauvegarde"><b>💾 Pense à sauvegarder</b><div class="muted" style="margin:4px 0 8px">${db.settings.lastBackup ? 'Dernière sauvegarde : ' + fmtDate(db.settings.lastBackup) + '.' : 'Tu n\'as encore jamais sauvegardé.'} Tes cours et tes cartes ne sont que sur cet appareil : si le navigateur est vidé, tout disparaît.</div><div class="row"><button id="bkNow">Sauvegarder maintenant</button><button class="ghost" id="bkLater">Plus tard</button></div></div>` : ''}
-    ${(() => { const S = buildSession(), rec = recommend(); return (S.total ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${S.minutes} min</span></div><div class="muted">${S.total} étapes mélangées : ${S.counts.cards} carte${S.counts.cards > 1 ? 's' : ''} · ${S.counts.ex} exercice${S.counts.ex > 1 ? 's' : ''} · ${S.counts.nw} nouvelle notion · ${S.counts.expl} explication</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
+    <a class="card hero go" href="${n.href}" id="go1"><span class="ico">${n.ico}</span><span class="gt"><b>${esc(n.title)}</b><small>${esc(n.sub)}</small></span><span class="arrow" aria-hidden="true">›</span></a>
+    <a class="statusline" href="#/progress" aria-label="Voir mes progrès"><span class="st-av">${esc(db.settings.avatar || '🥷')}</span><b>Niv. ${p.level}</b><span class="xpbar" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p.pct}%"></i></span><span>🔥 ${streak()}</span><span class="arrow" aria-hidden="true">›</span></a>
+    ${homeBanner()}
+    <h2>Matières</h2>
+    ${subjTiles(sj.main)}
+    ${sj.other.length ? `<details class="others"><summary>Autres matières (${sj.other.length})</summary>${subjTiles(sj.other)}</details>` : ''}
     <div class="grid shortcuts">
       <a class="card tile" href="#/courses"><span class="ico">📚</span><b>Mes cours</b><span class="muted">${db.courses.length} cours</span></a>
       <a class="card tile" href="#/library"><span class="ico">🗂️</span><b>Mes cartes</b><span class="muted">${total} carte${total > 1 ? 's' : ''}</span></a>
-    </div>
+    </div>`;
+  const bkNow = document.getElementById('bkNow'), bkLater = document.getElementById('bkLater'), pfLater = document.getElementById('pfLater');
+  if (bkNow) bkNow.onclick = () => { exportData(); viewHome(); };
+  if (bkLater) bkLater.onclick = () => { db.settings.backupSnooze = Date.now() + BACKUP_SNOOZE_DAYS * 864e5; save(); viewHome(); };
+  if (pfLater) pfLater.onclick = () => { db.settings.profileSnooze = Date.now() + 7 * 864e5; save(); viewHome(); };
+}
+/* ---------- Réviser : emploi du temps, toutes les matières, paquets ---------- */
+function viewRevise() {
+  const due = dueItems().length, reserve = reserveCount();
+  $app.innerHTML = `
+    <h1>Réviser</h1>
+    <div class="card hero">${due
+      ? `<div class="big">${due}</div><div>carte${due > 1 ? 's' : ''} à revoir aujourd'hui</div><a class="btn" href="#/review">${esc(tx('session_btn'))}</a>`
+      : `<div class="big">✨</div><div>Rien à revoir aujourd'hui${db.cards.length ? '' : ' — crée ta première carte !'}</div>`}
+      ${reserve ? `<div class="muted" style="margin-top:8px">+ ${reserve} nouvelle${reserve > 1 ? 's' : ''} carte${reserve > 1 ? 's' : ''} arrivent les prochains jours (${NEW_PER_DAY} par jour)</div>` : ''}</div>
+    ${(() => { const S = buildSession(), rec = recommend(); return (S.total ? `<a class="card course" href="#/daily"><div class="row between"><b>🎯 ${esc(tx('daily_title'))}</b><span class="muted">≈ ${S.minutes} min</span></div><div class="muted">${S.total} étapes mélangées : ${S.counts.cards} carte${S.counts.cards > 1 ? 's' : ''} · ${S.counts.ex} exercice${S.counts.ex > 1 ? 's' : ''} · ${S.counts.nw} nouvelle notion · ${S.counts.expl} explication</div></a>` : '') + (rec ? `<div class="card"><b>Conseil :</b> ${esc(rec)}</div>` : ''); })()}
+    <h2>Toutes les matières</h2>
+    ${subjTiles(Object.keys(SUBJECTS).filter(k => k !== 'autre'))}
+    ${prepHtml()}
+    ${db.decks.length ? `<h2>Mes paquets</h2>${db.decks.map(d => {
+      const n = dueItems(c => d.cardIds.includes(c.id)).length;
+      return `<div class="card row between"><span><b>${esc(d.name)}</b> <span class="muted">${d.cardIds.length} cartes${n ? ` · ${n} à revoir` : ''}</span></span><a class="btn ghost" href="#/review/deck/${d.id}">Réviser</a></div>`;
+    }).join('')}` : ''}
+    <div class="row" style="margin:12px 0"><a class="btn ghost" href="#/library">🗂️ Mes cartes</a><a class="btn ghost" href="#/card/new">+ Carte</a></div>`;
+}
+/* ---------- Progrès : fiche, quête, chiffres, médailles, moyennes ---------- */
+function viewProgress() {
+  const total = db.cards.length;
+  const mastered = db.cards.filter(c => cardLevel(c) === 'maitrisee').length, toReview = db.cards.filter(c => cardLevel(c) === 'revoir' && !(isPackCard(c) && dirsOf(c).every(d => isNewState(stateOf(c, d))))).length;
+  $app.innerHTML = `
+    <h1>Mes progrès</h1>
+    ${statusHtml()}
     <div class="grid">
       <div class="card stat"><b>${total}</b><span class="muted">cartes créées</span></div>
       <div class="card stat"><b>${mastered}</b><span class="muted">maîtrisées</span></div>
       <div class="card stat"><b>${toReview}</b><span class="muted">à revoir</span></div>
       <div class="card stat"><b>🔥 ${streak()}</b><span class="muted">jour${streak() > 1 ? 's' : ''} de suite</span></div>
     </div>
-    <div class="row" style="margin-bottom:12px">
-      ${hasAI() ? '<a class="btn" href="#/new">+ Nouveau cours</a>' : ''}
-      <a class="btn ghost" href="#/card/new">+ Carte</a>
-    </div>
-    ${db.decks.length ? `<h2>Mes paquets</h2>${db.decks.map(d => {
-      const n = dueItems(c => d.cardIds.includes(c.id)).length;
-      return `<div class="card row between"><span><b>${esc(d.name)}</b> <span class="muted">${d.cardIds.length} cartes${n ? ` · ${n} à revoir` : ''}</span></span><a class="btn ghost" href="#/review/deck/${d.id}">Réviser</a></div>`;
-    }).join('')}` : ''}
-    ${(() => { const b = computeBadges(), n = b.filter(x => x.got).length; return `<h2>${esc(tx('badges_title'))} <span class="muted">${n}/${b.length}</span></h2><div class="card badges">${b.map(x => `<span class="badge${x.got ? ' got' : ''}" title="${x.got ? 'Obtenu' : 'À débloquer'}"><span>${x.ico}</span><span><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></span></span>`).join('')}</div>`; })()}
-    <div class="row between"><h2>Derniers cours</h2>${db.courses.length > 3 ? '<a href="#/courses">Tout voir →</a>' : ''}</div>
-    ${db.courses.length ? db.courses.slice().sort((a, b) => lastSeen(b) - lastSeen(a)).slice(0, 3).map(courseCard).join('') :
-      `<div class="card muted">Aucun cours pour l'instant. Choisis ta classe, une matière et un chapitre, et Révizio prépare la leçon, les cartes mémoire et le quiz.</div>`}
-    ${progressBySubject()}`;
-  const bkNow = document.getElementById('bkNow'), bkLater = document.getElementById('bkLater');
-  if (bkNow) bkNow.onclick = () => { exportData(); viewHome(); };
-  if (bkLater) bkLater.onclick = () => { db.settings.backupSnooze = Date.now() + BACKUP_SNOOZE_DAYS * 864e5; save(); viewHome(); };
+    ${progressBySubject()}
+    ${(() => { const b = computeBadges(), n = b.filter(x => x.got).length; return `<h2>${esc(tx('badges_title'))} <span class="muted">${n}/${b.length}</span></h2><div class="card badges">${b.map(x => `<span class="badge${x.got ? ' got' : ''}" title="${x.got ? 'Obtenu' : 'À débloquer'}"><span>${x.ico}</span><span><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></span></span>`).join('')}</div>`; })()}`;
 }
 /* ---------- Bibliothèque de cours ---------- */
 const lastSeen = c => c.lastOpened || c.createdAt || 0;

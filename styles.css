@@ -358,6 +358,27 @@ html[data-theme="systeme"] .choice, html[data-theme="anime"] .choice, html[data-
 .arow2.good { border: 1.5px solid var(--ok); } .arow2.bad { border: 1.5px solid var(--ko); }
 .arow2 .r:not(:empty) { color: var(--text); }
 button#nx:disabled { opacity: .45; }
-body.focus .topbar nav { display: none; }
+body.focus .tabbar { display: none; }
+body.focus main { padding-bottom: 0; }
 .qhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .qhead .quit { flex: none; }
+
+/* ---------- Accueil allégé, barre d'onglets (v3.21) ---------- */
+.topbar nav { display: none; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: space-around; gap: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
+.tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 50px; padding: 4px 2px; border-radius: 10px; font-size: .72rem; font-weight: 600; color: var(--muted); text-decoration: none; }
+.tabbar a .ti { font-size: 1.35rem; line-height: 1; }
+.tabbar a.active { color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, transparent); }
+main#app { padding-bottom: 84px; }
+.card.go { display: flex; align-items: center; gap: 14px; padding: 16px; text-align: left; text-decoration: none; background: var(--primary); color: #fff; border: 0; }
+.card.go .ico { font-size: 1.8rem; }
+.card.go .gt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.card.go b { font-size: 1.15rem; }
+.card.go small { opacity: .9; font-size: .82rem; line-height: 1.3; }
+.card.go .arrow, .statusline .arrow { font-size: 1.6rem; opacity: .8; }
+.statusline { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); text-decoration: none; }
+.statusline .st-av { font-size: 1.3rem; }
+.statusline .xpbar { flex: 1; }
+.banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; font-size: .9rem; }
+.banner .row { flex: none; gap: 6px; }
+.others summary { cursor: pointer; padding: 10px 2px; color: var(--muted); font-weight: 600; min-height: 44px; }

@@ -1,7 +1,7 @@
 const { make, check, done } = require('./harness');
 const fs = require('fs'), dir = __dirname + '/../';
 const DAY = 864e5;
-const st = (extra = {}, nCards = 12) => ({ v: 2, settings: Object.assign({ level: '6e', apiKey: 'k', name: 'Léo' }, extra), courses: [], decks: [], activity: { days: [] },
+const st = (extra = {}, nCards = 12) => ({ v: 2, settings: Object.assign({ level: '6e', apiKey: 'k', name: 'Léo', profileDone: true }, extra), courses: [], decks: [], activity: { days: [] },
   cards: Array.from({ length: nCards }, (_, i) => ({ id: 'c' + i, q: 'q' + i, a: 'a' + i, subject: 'maths', level: '6e', createdAt: 1 })) });
 (async () => {
   // --- rappel de sauvegarde

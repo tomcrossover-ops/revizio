@@ -16,14 +16,15 @@
   <a class="skip" href="#app">Aller au contenu</a>
   <header class="topbar">
     <a href="#/" class="brand"><span class="logo">✦</span><span class="bt">Révizio</span></a>
-    <nav aria-label="Menu principal">
-      <a href="#/" data-nav="home">Accueil</a>
-      <a href="#/new" data-nav="new" data-ai hidden>+ Cours</a>
-      <a href="#/library" data-nav="library">Cartes</a>
-      <a href="#/settings" data-nav="settings">Réglages</a>
-    </nav>
   </header>
   <main id="app" tabindex="-1"></main>
+  <nav class="tabbar" aria-label="Menu principal">
+    <a href="#/" data-nav="home"><span class="ti" aria-hidden="true">🏠</span><span>Accueil</span></a>
+    <a href="#/revise" data-nav="revise"><span class="ti" aria-hidden="true">🎯</span><span>Réviser</span></a>
+    <a href="#/courses" data-nav="courses"><span class="ti" aria-hidden="true">📚</span><span>Cours</span></a>
+    <a href="#/progress" data-nav="progress"><span class="ti" aria-hidden="true">🏆</span><span>Progrès</span></a>
+    <a href="#/settings" data-nav="settings"><span class="ti" aria-hidden="true">⚙️</span><span>Réglages</span></a>
+  </nav>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="core.js"></script>
   <script src="theme.js"></script>

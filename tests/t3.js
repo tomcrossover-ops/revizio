@@ -41,7 +41,7 @@ const dir = require('path').join(__dirname, '..') + '/';
   check('SW: tous les fichiers du cache hors ligne existent', missing.length === 0, missing.join(','));
   const html = fs.readFileSync(dir + 'index.html', 'utf8'); const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   check('index.html: scripts dans l\'ordre core, catalog, cards, app et tous en cache hors ligne', scripts.join() === 'core.js,theme.js,speech.js,ai.js,catalog.js,learn.js,exercise.js,cards.js,session.js,pack.js,chapter.js,app.js' && scripts.every(s => cached.includes(s)), scripts.join());
-  check('index.html: lien « Cartes » dans la navigation', /href="#\/library"/.test(html));
+  check('index.html: onglets Réviser/Progrès dans la barre du bas', /href="#\/revise"/.test(html) && /href="#\/progress"/.test(html) && /class="tabbar"/.test(html));
   // ---- SW: délai réseau et icônes
   const mf = JSON.parse(fs.readFileSync(dir + 'manifest.webmanifest', 'utf8'));
   check('manifeste: icônes PNG 192, 512 et maskable présentes', ['192x192', '512x512'].every(z => mf.icons.some(i => i.sizes === z && i.type === 'image/png' && i.purpose === 'any')) && mf.icons.some(i => i.purpose === 'maskable' && i.type === 'image/png') && mf.icons.every(i => fs.existsSync(dir + i.src)));

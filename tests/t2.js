@@ -6,11 +6,11 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
 
   // ---- Accueil + révision active
   let s = base(); s.cards = [mk('a'), mk('b', { reversible: true, rev: { step: 0, due: '2000-01-01', lapses: 0 } }), mk('z', { fwd: { step: 3, due: '2999-01-01', lapses: 0 } })];
+  { const hp = make({ store: JSON.parse(JSON.stringify(s)) }); await hp.go('#/progress'); check('progrès: stats créées/maîtrisées', hp.$$('.stat b').map(e => e.textContent).slice(0, 2).join(',') === '3,1', hp.$$('.stat b').map(e => e.textContent).join(',')); }
   let h = make({ store: s });
-  check('accueil: compteur « 3 cartes à revoir aujourd\'hui »', /3\s*carte/.test(h.$('.hero').textContent) && /à revoir aujourd'hui/.test(h.$('.hero').textContent), h.$('.hero').textContent);
-  check('accueil: stats créées/maîtrisées', h.$$('.stat b').map(e => e.textContent).slice(0, 2).join(',') === '3,1', h.$$('.stat b').map(e => e.textContent).join(','));
+  check('accueil: bouton unique « Réviser 3 cartes »', /Réviser 3\s*carte/.test(h.$('.go').textContent) && /à revoir aujourd'hui/i.test(h.$('.go').textContent) && h.$('.go').getAttribute('href') === '#/review', h.$('.go').textContent);
   await h.go('#/review');
-  const ft = h.$('.flash').textContent; check('révision: un seul côté affiché (l\'autre est caché)', /Question|Réponse/.test(ft) && !(/Question/.test(ft) && /Réponse/.test(ft)) && h.$('#reveal').disabled === true, ft);
+  const ft = h.$('.flash').textContent; check('révision: un seul côté affiché (l\'autre est caché)', /Question|Réponse/.test(ft) && !(/Question/.test(ft) && /Réponse/.test(ft)) && !!h.$('#reveal'), ft);
   await h.wait(40);
   check('révision: bouton activé après réflexion', h.$('#reveal').disabled === false && /Dévoiler/.test(h.$('#reveal').textContent));
   h.$('#mine').value = 'ma tentative'; h.$('#reveal').click();
@@ -51,7 +51,7 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
 
   // paquet vide / rien à revoir
   h = make({ store: base() }); await h.go('#/review');
-  check('rien à revoir: message', /Rien à revoir/.test(h.$('.hero').textContent));
+  await h.go('#/revise'); check('rien à revoir: message', /Rien à revoir/.test(h.$('.hero').textContent));
 
   // ---- Formulaire de carte
   h = make({ store: base() }); await h.go('#/card/new');
@@ -117,7 +117,7 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
   check('filtre par paquet + lien de révision', n() === 2 && h.$('#deckbar a').getAttribute('href') === '#/review/deck/' + deckId);
   await h.go('#/review/deck/' + deckId);
   check('révision d\'un paquet: uniquement ses cartes', /Question/.test(h.$('.flash').textContent));
-  await h.go('#/'); check('accueil: paquets listés', /Mon paquet/.test(h.$('body').textContent));
+  await h.go('#/revise'); check('réviser: paquets listés', /Mon paquet/.test(h.$('body').textContent));
   await h.go('#/library'); h.$('#exp').click();
   check('export CSV déclenché', /^revizio-cartes-\d{4}-\d{2}-\d{2}\.csv$/.test(h.w.__clicked || ''), h.w.__clicked);
   const inp = h.$('#imp'); Object.defineProperty(inp, 'files', { value: [{ text: async () => 'matiere;chapitre;etiquette;recto;verso;explication;inversable\nmaths;Géométrie;formule;Périmètre du carré ?;4 × c;;non\n' }] }); h.change(inp); await h.wait(40);
@@ -137,7 +137,7 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
   check('génération: réponse longue tronquée à 200', gc[1].back.length <= 200, gc[1].back.length);
   check('génération: redirection vers le cours', /#\/course\//.test(h.w.location.hash) && /3 cartes|Cartes mémoire/.test(h.$('body').textContent));
   const cid = h.t.db.courses[0].id;
-  await h.go('#/'); check('accueil: carte de cours avec nb de cartes (inversable = 2 items)', /2 cartes/.test(h.$('a.course[href^="#/course"]').textContent) && /3 à revoir/.test(h.$('a.course[href^="#/course"]').textContent), h.$('a.course[href^="#/course"]').textContent);
+  await h.go('#/courses'); check('cours: carte de cours avec nb de cartes (inversable = 2 items)', /2 cartes/.test(h.$('a.course[href^="#/course"]').textContent) && /3 à revoir/.test(h.$('a.course[href^="#/course"]').textContent), h.$('a.course[href^="#/course"]').textContent);
   await h.go('#/course/' + cid); h.$('#del').click();
   check('suppression d\'un cours: supprime aussi ses cartes', h.t.db.cards.length === 0 && h.t.db.courses.length === 0);
 
@@ -148,7 +148,7 @@ const ok = j => async () => ({ ok: true, status: 200, json: async () => ({ stop_
   const im = h.$('#imp'); Object.defineProperty(im, 'files', { value: [{ text: async () => JSON.stringify(old) }] }); h.change(im); await h.wait(40);
   check('import d\'une ancienne sauvegarde (migrée)', h.t.db.cards.length === 1 && h.t.db.cards[0].fwd.step === 1 && h.t.db.courses[0].cards === undefined && h.t.db.settings.name === 'Léo');
   await h.go('#/settings'); h.$('#exp').click(); check('export JSON déclenché', /^revizio-\d{4}/.test(h.w.__clicked || ''));
-  check('version affichée 3.20', /Version installée : 3\.20/.test(h.$('body').textContent));
+  check('version affichée 3.21', /Version installée : 3\.21/.test(h.$('body').textContent));
   check('aucune erreur JS (réglages)', h.errors.length === 0, h.errors.join('|'));
   done();
 })().catch(e => { console.error('CRASH', e); process.exit(1); });

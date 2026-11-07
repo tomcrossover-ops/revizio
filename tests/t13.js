@@ -13,7 +13,7 @@ const { make, check, done } = require('./harness');
   await h.go('#/');
   const tiles = $$('.subjgrid a');
   check('accueil : une tuile par matière (sans « Autre »)', tiles.length === 11 && tiles.every(a => /^#\/subject\//.test(a.getAttribute('href'))), tiles.length);
-  check('accueil : les matières arrivent avant la fiche', $('#app').innerHTML.indexOf('subjgrid') < $('#app').innerHTML.indexOf('class="card status"'));
+  check('accueil : gros bouton, puis ligne de statut compacte, puis matières', $('#app').innerHTML.indexOf('card hero go') < $('#app').innerHTML.indexOf('statusline') && $('#app').innerHTML.indexOf('statusline') < $('#app').innerHTML.indexOf('subjgrid') && !$('.status'));
   check('accueil : compteur de chapitres', /1 chapitre/.test(tiles.find(a => /maths/.test(a.getAttribute('href'))).textContent));
 
   // ---- matière

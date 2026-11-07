@@ -28,7 +28,7 @@ const D = (y, m, d) => new Date(y, m - 1, d, 10); // heure locale
 
   // ---- profil : création
   await h.go('#/');
-  check('accueil : invitation à créer le profil', !!$$('a').find(a => a.getAttribute('href') === '#/profile' && a.textContent.includes('Crée ton profil')));
+  check('accueil : bandeau profil (un seul, fermable)', !!$('#pf') && /Crée ton profil/.test($('#pf').textContent) && !!$('#pf a[href="#/profile"]') && !!$('#pfLater') && $$('.banner').length === 1);
   await h.go('#/profile');
   check('profil : 8 avatars, 5 jours x 11 matières', $$('.av').length === 8 && $$('.tg').length === 55 && $$('.tg.on').length === 9, $$('.tg').length + ' ' + $$('.tg.on').length);
   $$('.av')[2].click(); $('#name').value = 'Léo'; $('#level').value = '5e';
@@ -44,7 +44,7 @@ const D = (y, m, d) => new Date(y, m - 1, d, 10); // heure locale
   const realDate = w.Date; // on fige « samedi 7 novembre 2026 »
   class FakeDate extends realDate { constructor(...a) { if (a.length) super(...a); else super(2026, 10, 7, 10); } static now() { return new realDate(2026, 10, 7, 10).getTime(); } }
   w.Date = FakeDate;
-  await h.go('#/settings'); await h.go('#/');
+  await h.go('#/settings'); await h.go('#/revise');
   check('« À préparer pour lundi et mardi »', $('.prep h2') && $('.prep h2').textContent.includes('lundi et mardi'), $('.prep h2') && $('.prep h2').textContent);
   check('4 matières à préparer', $$('.prep-row').length === 4);
   check('grille de la semaine : 5 jours, lundi+mardi en or', $$('.wd').length === 5 && $$('.wd.prep').length === 2 && $$('.wd.prep')[0].textContent.includes('Lun'));

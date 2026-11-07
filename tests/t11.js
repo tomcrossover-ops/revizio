@@ -6,9 +6,9 @@ const { make, check, done } = require('./harness');
   // thème par défaut
   check('thème par défaut = systeme', w.document.documentElement.dataset.theme === 'systeme' && dbx().settings.theme === 'systeme');
   check('theme-color systeme', w.document.querySelector('meta[name="theme-color"]').content === '#060a14');
-  await h.go('#/');
-  check('accueil Système : fiche + quête', !!$('.status') && /Quête quotidienne/.test($('.quest').textContent) && /Niv\. 1/.test($('.status').textContent) && $('.st-rank').textContent === 'E');
-  check('accueil Système : bienvenue chasseur', /chasseur/i.test($('h1').textContent));
+  await h.go('#/'); const hh1 = $('h1').textContent; await h.go('#/progress');
+  check('progrès Système : fiche + quête', !!$('.status') && /Quête quotidienne/.test($('.quest').textContent) && /Niv\. 1/.test($('.status').textContent) && $('.st-rank').textContent === 'E');
+  check('accueil Système : bienvenue chasseur', /chasseur/i.test(hh1));
   check('pas de vocabulaire magique', !/sorci|grimoire|magi|Académie|ensorcel/i.test($('#app').textContent), $('#app').textContent.slice(0, 200));
   // niveaux
   const lv = x => T.levelOf(x);
@@ -43,11 +43,11 @@ const { make, check, done } = require('./harness');
   check('réglages: 3 thèmes', !!sel && sel.options.length === 3 && sel.value === 'systeme');
   sel.value = 'anime'; h.change(sel);
   check('thème anime appliqué + sauvegardé', w.document.documentElement.dataset.theme === 'anime' && dbx().settings.theme === 'anime' && w.document.querySelector('meta[name="theme-color"]').content === '#ff7eb6');
-  await h.go('#/');
-  check('anime: textes + médailles', /Bienvenue sur Révizio/.test($('h1').textContent) && /Médailles/.test($('#app').textContent) && /Motivé/.test($('.badges').textContent));
+  await h.go('#/'); const h1a = $('h1').textContent; await h.go('#/progress');
+  check('anime: textes + médailles', /Bienvenue sur Révizio/.test(h1a) && /Médailles/.test($('#app').textContent) && /Motivé/.test($('.badges').textContent));
   const sel2 = (await h.go('#/settings'), $('#theme')); sel2.value = 'parchemin'; h.change(sel2);
-  await h.go('#/');
-  check('parchemin: textes magiques conservés', /Académie/.test($('h1').textContent) && /Distinctions/.test($('#app').textContent) && /Apprenti assidu/.test($('.badges').textContent));
+  await h.go('#/'); const h1p = $('h1').textContent; await h.go('#/progress');
+  check('parchemin: textes magiques conservés', /Académie/.test(h1p) && /Distinctions/.test($('#app').textContent) && /Apprenti assidu/.test($('.badges').textContent));
   // thème inconnu -> défaut
   const h2 = mk({ theme: 'zzz' }); check('thème inconnu -> systeme', h2.w.document.documentElement.dataset.theme === 'systeme');
   // migration ancienne sauvegarde sans xp

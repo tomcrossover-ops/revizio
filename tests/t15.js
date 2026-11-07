@@ -6,7 +6,7 @@ const { make, check, done } = require('./harness'); const fs = require('fs');
   // SANS clé
   let h = mk('');
   await h.go('#/'); await h.wait(100);
-  check('sans clé : nav « + Cours » masquée', h.$('[data-nav="new"]').hidden === true);
+  check('barre d\'onglets : 5 onglets', h.$$('.tabbar a').length === 5 && h.$$('.tabbar a').map(a => a.dataset.nav).join() === 'home,revise,courses,progress,settings');
   check('sans clé : pas de bouton « Nouveau cours »', !/Nouveau cours/.test(h.$('body').textContent));
   check('sans clé : plus de « Première étape »', !/Première étape/.test(h.$('body').textContent));
   await h.go('#/new'); await h.wait(100);
@@ -27,8 +27,7 @@ const { make, check, done } = require('./harness'); const fs = require('fs');
   // AVEC clé
   h = mk('sk-test');
   await h.go('#/'); await h.wait(100);
-  check('avec clé : nav « + Cours » visible', h.$('[data-nav="new"]').hidden === false);
-  check('avec clé : bouton « Nouveau cours »', /Nouveau cours/.test(h.$('body').textContent));
+  await h.go('#/courses'); check('avec clé : bouton « Nouveau » dans Mes cours', /\+ Nouveau/.test(h.$('body').textContent));
   await h.go('#/new'); await h.wait(100);
   check('avec clé : #/new accessible', /new/.test(h.w.location.hash));
   await h.go('#/subject/maths'); await h.wait(400);

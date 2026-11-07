@@ -88,7 +88,7 @@ const { make, check, done } = require('./harness');
   const s2 = mkStore(); s2.courses[0].scores = [{ date: 1, score: 6, total: 6 }, { date: 2, score: 6, total: 6 }];
   const h2 = make({ store: s2 }); check('maîtrise : Maîtrisé (quiz 100 %, sans cartes)', h2.t.courseMastery(h2.t.db.courses[0]) === 'maitrise');
   const bd = h2.t.computeBadges(); check('badges : Quiz parfait + Chapitre terminé obtenus, pas les cartes', bd.find(b => b.id === 'q1').got && bd.find(b => b.id === 'c1').got && !bd.find(b => b.id === 'm10').got);
-  await h2.go('#/'); check('accueil : badges', h2.$$('.badge.got').length === 2 && h2.$$('.badge').length === 8);
+  await h2.go('#/progress'); check('progrès : badges', h2.$$('.badge.got').length === 2 && h2.$$('.badge').length === 8);
   const s3 = mkStore(); s3.activity.days = Array.from({ length: 5 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
   const h3 = make({ store: s3 }); check('badge « 5 jours de suite »', h3.t.computeBadges().find(b => b.id === 's5').got);
   // migration d'un ancien cours (sans skills / mistakes)
