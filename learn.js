@@ -53,6 +53,8 @@ function courseMastery(c) {
   const cs = cardsOf(c.id), sc = avgScore(c);
   const mastered = cs.filter(x => cardLevel(x) === 'maitrisee').length, share = cs.length ? mastered / cs.length : null;
   const touched = cs.some(x => x.fwd && x.fwd.last) || sc !== null;
+  const lb = (c.scores || [])[(c.scores || []).length - 1]; // dernier bilan complet réussi à 100 % : chapitre acquis, même sans avoir suivi toutes les étapes
+  if (lb && lb.mode === 'full' && lb.total >= 8 && lb.score === lb.total) return 'maitrise';
   if (!touched) return 'decouverte';
   const parts = [sc !== null ? sc / 100 : null, share].filter(v => v !== null);
   const m = parts.reduce((a, b) => a + b, 0) / parts.length;

@@ -115,20 +115,40 @@ async function enrichAudio() {
 /* Corrections de contenu : remplace, dans les chapitres déjà importés, une question corrigée depuis (une seule fois par correction).
    La question est retrouvée par son énoncé d'origine ; son identifiant est conservé. Retourne le nombre de questions corrigées. */
 async function applyCorrections() {
-  let list;
-  try { const r = await fetch('packs/corrections.json'); if (!r.ok) return 0; list = (await r.json()).fixes; } catch (e) { return 0; }
+  let list, batches;
+  try { const r = await fetch('packs/corrections.json'); if (!r.ok) return 0; const j = await r.json(); list = j.fixes; batches = j.batches; } catch (e) { return 0; }
   if (!Array.isArray(list)) return 0;
   const done = db.settings.fixesDone = Array.isArray(db.settings.fixesDone) ? db.settings.fixesDone : [];
   let n = 0;
+  const inChapter = (c, f) => c.origin === 'pack' && c.level === f.level && c.subject === f.subject && sameChapter(c, { subject: f.subject, level: f.level, catalogTitle: f.catalogTitle, title: f.catalogTitle });
   list.forEach(f => {
     if (!f || done.includes(f.id)) return;
-    db.courses.filter(c => c.origin === 'pack' && c.level === f.level && c.subject === f.subject && sameChapter(c, { subject: f.subject, level: f.level, catalogTitle: f.catalogTitle, title: f.catalogTitle })).forEach(c => {
+    db.courses.filter(c => inChapter(c, f)).forEach(c => {
       const i = c.questions.findIndex(q => normText(q.q) === normText(f.match));
       const nq = normQuestions([f.question])[0];
       if (i >= 0 && nq) { c.questions[i] = { ...nq, id: c.questions[i].id }; n++; }
     });
     done.push(f.id);
   });
+  /* lots d'explications réécrites : ne touche qu'aux explications courtes (< 15 car.), jamais à une explication déjà riche */
+  for (const b of Array.isArray(batches) ? batches : []) {
+    if (!b || !b.id || !b.file || done.includes(b.id)) continue;
+    let d;
+    try { const r = await fetch('packs/' + b.file); if (!r.ok) continue; d = await r.json(); } catch (e) { continue; }
+    if (!d || !Array.isArray(d.items)) continue;
+    const by = {};
+    d.items.forEach(it => { const k = it.level + '|' + it.catalogTitle; (by[k] = by[k] || new Map()).set(normText(it.match), it.explanation); });
+    db.courses.filter(c => c.origin === 'pack' && c.subject === d.subject).forEach(c => {
+      const m = by[c.level + '|' + c.catalogTitle];
+      if (!m) return;
+      c.questions.forEach(q => {
+        if (q.audio || (q.explanation && String(q.explanation).length >= 15)) return;
+        const e = m.get(normText(q.q));
+        if (e) { q.explanation = e; n++; }
+      });
+    });
+    done.push(b.id);
+  }
   if (n || list.length) save();
   return n;
 }

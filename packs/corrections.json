@@ -87,5 +87,27 @@
     "skill": "dates"
    }
   }
+ ],
+ "batches": [
+  {
+   "id": "v317-expl-maths",
+   "file": "fixes-expl-maths.json"
+  },
+  {
+   "id": "v317-expl-francais",
+   "file": "fixes-expl-francais.json"
+  },
+  {
+   "id": "v317-expl-histgeo",
+   "file": "fixes-expl-histgeo.json"
+  },
+  {
+   "id": "v317-expl-physique",
+   "file": "fixes-expl-physique.json"
+  },
+  {
+   "id": "v317-expl-techno",
+   "file": "fixes-expl-techno.json"
+  }
  ]
 }

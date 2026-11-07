@@ -457,6 +457,7 @@ function viewQuiz(id, mode) {
       ${mini ? '' : backLink(back, 'Chapitre')}
       <h1>${mini ? 'Bilan' : mode === 'weak' ? 'Quiz ciblé terminé' : mode === 'missed' ? 'Questions ratées : bilan' : 'Bilan de compétence'}</h1>
       <div class="card"><div class="score">${score}/${qs.length}</div><p style="text-align:center">${msg}</p></div>
+      ${!mini && !mode && pct === 100 ? '<div class="card">👑 <b>Chapitre validé !</b> Bilan réussi à 100 % : ce chapitre est considéré comme maîtrisé.</div>' : ''}
       <div class="card"><b>${reco}</b></div>
       ${made ? `<div class="card">🃏 <b>${plural(made, 'flashcard')} créée${made > 1 ? 's' : ''}</b> à partir de tes erreurs. Elles reviendront dans tes révisions.</div>` : ''}
       <h2>Mes compétences</h2>
