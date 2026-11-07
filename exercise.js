@@ -82,9 +82,11 @@ function answerText(q) {
 
 /* ---------- Dessin d'un exercice ---------- */
 function renderExercise(q, body, done) {
-  let tries = 0, hinted = false, over = false;
+  let tries = 0, hinted = false, over = false, kb = null;
   const end = ok => {
     if (over) return; over = true;
+    body.querySelectorAll('.actbar').forEach(b => b.remove());
+    if (kb) document.removeEventListener('keydown', kb);
     if (q.lang && q.type !== 'repete') { // après la réponse : écouter la bonne réponse dans la langue
       const t = q.audio || (() => { const a = q.type === 'qcm' ? q.choices[q.answer] : q.type === 'short' || q.type === 'trous' ? q.answer : ''; const h = a && lexFind(a, q.lang); return h ? h.text : ''; })();
       const b = t && sayBtnsLang(t, q.lang);
@@ -132,14 +134,31 @@ function renderExercise(q, body, done) {
     // l'ordre des choix est mélangé à chaque affichage (data-k garde l'indice d'origine), sauf « les deux », « aucune… »
     const fixed = q.choices.some(ch => /ci-dessus|toutes les|aucune|les deux|tous les/i.test(ch));
     const order = fixed ? q.choices.map((_, k) => k) : shuffle(q.choices.map((_, k) => k));
-    body.innerHTML = order.map(k => `<button class="choice" data-k="${k}">${esc(q.choices[k])}</button>`).join('');
-    body.querySelectorAll('.choice').forEach(b => b.onclick = () => {
-      const k = +b.dataset.k;
-      body.querySelectorAll('.choice').forEach(x => { x.disabled = true; if (+x.dataset.k === q.answer) { x.classList.add('good'); x.insertAdjacentHTML('beforeend', '<span class="sr"> (bonne réponse)</span>'); } });
+    const LET = 'ABCDEFGH';
+    body.innerHTML = order.map((k, n) => `<button type="button" class="choice" data-k="${k}" aria-pressed="false"><span class="lt" aria-hidden="true">${LET[n] || n + 1}</span><span class="tx">${esc(q.choices[k])}</span></button>`).join('') + '<div class="actbar"><button type="button" id="ok" disabled style="width:100%">Valider ma réponse</button></div>';
+    const chs = [...body.querySelectorAll('.choice')], okb = body.querySelector('#ok');
+    let sel = -1;
+    const pick = n => { // un tap choisit, un deuxième tap sur « Valider » confirme : on peut se corriger
+      if (over) return; sel = n;
+      chs.forEach((x, m) => { x.classList.toggle('sel', m === n); x.setAttribute('aria-pressed', m === n ? 'true' : 'false'); });
+      okb.disabled = false; okb.textContent = 'Valider : ' + LET[n];
+    };
+    chs.forEach((b, n) => b.onclick = () => pick(n));
+    okb.onclick = () => {
+      if (sel < 0 || over) return;
+      const b = chs[sel], k = +b.dataset.k;
+      chs.forEach(x => { x.disabled = true; x.classList.remove('sel'); if (+x.dataset.k === q.answer) { x.classList.add('good'); x.insertAdjacentHTML('beforeend', '<span class="sr"> (bonne réponse)</span>'); } });
       if (k !== q.answer) { b.classList.add('bad'); b.insertAdjacentHTML('beforeend', '<span class="sr"> (ta réponse, incorrecte)</span>'); }
       tries = 1; end(k === q.answer);
-    });
-    addHint();
+    };
+    kb = e => { // clavier : 1 à 4 (ou A à D) pour choisir, Entrée pour valider
+      if (!body.isConnected) { document.removeEventListener('keydown', kb); return; }
+      if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || '')) return;
+      const n = /^[1-8]$/.test(e.key) ? +e.key - 1 : LET.indexOf(String(e.key).toUpperCase());
+      if (e.key.length === 1 && n >= 0 && n < chs.length) { pick(n); e.preventDefault(); } else if (e.key === 'Enter' && sel >= 0 && !over) { okb.click(); e.preventDefault(); }
+    };
+    document.addEventListener('keydown', kb);
+    addHint(); if (hint) body.insertBefore(hintBox, body.querySelector('.actbar')); // l'indice reste au-dessus du bouton fixe
     return;
   }
 
@@ -159,7 +178,7 @@ function renderExercise(q, body, done) {
 
   /* --- Texte à trous, calcul mental, réponse courte corrigée : 2 tentatives --- */
   if (autoChecked(q)) {
-    body.innerHTML = `<input id="ans" placeholder="${q.type === 'calcul' ? 'Ton résultat…' : 'Ta réponse…'}" autocomplete="off" ${q.type === 'calcul' ? 'inputmode="decimal"' : ''}><div id="fb" class="fb" role="status"></div><button id="chk" style="margin-top:10px;width:100%">Vérifier</button>`;
+    body.innerHTML = `<input id="ans" placeholder="${q.type === 'calcul' ? 'Ton résultat…' : 'Ta réponse…'}" autocomplete="off" ${q.type === 'calcul' ? 'inputmode="decimal"' : ''}><div id="fb" class="fb" role="status"></div><div class="actbar"><button id="chk" style="width:100%">Vérifier</button></div>`;
     const inp = document.getElementById('ans'), chk = document.getElementById('chk');
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chk.click(); } });
     chk.onclick = () => {
@@ -179,28 +198,45 @@ function renderExercise(q, body, done) {
       body.querySelector('#yes').onclick = () => { body.querySelectorAll('button').forEach(b => { b.disabled = true; }); end(true); };
       body.querySelector('#no').onclick = () => { body.querySelectorAll('button').forEach(b => { b.disabled = true; }); end(false); };
     };
-    addHint(); body.insertBefore(hintBox, chk);
+    addHint(); body.insertBefore(hintBox, body.querySelector('#fb'));
     inp.focus();
     return;
   }
 
   /* --- Association : relier chaque élément de gauche à sa réponse --- */
   if (q.type === 'assoc') {
-    const rights = shuffle(q.pairs.map(p => p[1]));
-    body.innerHTML = `<div class="card assoc">${q.pairs.map((p, i) => `<div class="arow"><span>${esc(p[0])}</span><select data-i="${i}" aria-label="${esc(p[0])}"><option value="">— choisir —</option>${rights.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select></div>`).join('')}</div>
-      <div id="fb" class="fb" role="status"></div><button id="chk" style="width:100%">Vérifier</button>`;
-    const sels = [...body.querySelectorAll('select')], chk = document.getElementById('chk');
-    chk.onclick = () => {
-      if (sels.some(s => !s.value)) { body.querySelector('#fb').innerHTML = '<span class="soft">Associe chaque élément avant de vérifier.</span>'; return; }
-      tries++;
-      const okRows = sels.map((s, i) => s.value === q.pairs[i][1]);
-      sels.forEach((s, i) => { s.classList.toggle('good', okRows[i]); s.classList.toggle('bad', !okRows[i]); });
-      if (okRows.every(Boolean)) { sels.forEach(s => { s.disabled = true; }); chk.disabled = true; body.querySelector('#fb').innerHTML = tries > 1 ? '<span class="soft">✔ Bien vu, c\'est juste à la 2e tentative !</span>' : '<span class="okmsg">✔ Bravo !</span>'; return end(tries === 1); }
-      if (tries < EX_TRIES) { body.querySelector('#fb').innerHTML = '<span class="soft">Certaines associations sont à revoir (en rouge). Essaie encore !</span>'; return; }
-      sels.forEach((s, i) => { s.value = q.pairs[i][1]; s.disabled = true; s.classList.remove('bad'); s.classList.add('good'); }); chk.disabled = true;
-      body.querySelector('#fb').innerHTML = '<span class="soft">Voici les bonnes associations.</span>'; end(false);
+    // on touche un élément de gauche, puis sa réponse : pas de menu déroulant, de grandes cibles
+    const rights = shuffle(q.pairs.map((p, i) => ({ t: p[1], i })));
+    const val = q.pairs.map(() => null); let act = 0, locked = false;
+    const draw = (marks) => {
+      body.innerHTML = `<div class="card assoc2">${q.pairs.map((p, i) => `<button type="button" class="arow2${act === i ? ' act' : ''}${marks ? (marks[i] ? ' good' : ' bad') : ''}" data-i="${i}" ${locked ? 'disabled' : ''} aria-label="${esc(p[0])} : ${val[i] ? esc(val[i].t) : 'à associer'}"><span class="l">${esc(p[0])}</span><span class="r">${val[i] ? esc(val[i].t) : '…'}</span></button>`).join('')}</div>
+        <div class="muted" style="margin:4px 0 6px">${locked ? '' : 'Touche un élément, puis sa réponse :'}</div>
+        <div class="chipsrow">${rights.filter(x => !val.includes(x)).map(x => `<button type="button" class="choice" data-r="${x.i}" ${locked ? 'disabled' : ''}><span class="tx">${esc(x.t)}</span></button>`).join('')}</div>
+        <div id="fb" class="fb" role="status"></div><div class="actbar"><button id="chk" style="width:100%" ${val.every(Boolean) && !locked ? '' : 'disabled'}>Vérifier</button></div>`;
+      body.querySelectorAll('.arow2').forEach(b => b.onclick = () => { const i = +b.dataset.i; val[i] = null; act = i; draw(); }); // retoucher une ligne la vide
+      body.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+        val[act] = rights.find(x => x.i === +b.dataset.r);
+        const nx = val.findIndex(v => !v); act = nx < 0 ? act : nx; draw();
+      });
+      const fbMsg = body.querySelector('#fb'); if (marks === undefined && msg0) { fbMsg.innerHTML = msg0; msg0 = ''; }
+      const chk = document.getElementById('chk');
+      if (hint) body.insertBefore(hintBox, body.querySelector('#fb'));
+      chk.onclick = () => {
+        if (!val.every(Boolean)) return;
+        tries++;
+        const okRows = val.map((v, i) => v.t === q.pairs[i][1]);
+        if (okRows.every(Boolean)) { locked = true; draw(okRows); body.querySelector('#fb').innerHTML = tries > 1 ? '<span class="soft">✔ Bien vu, c\'est juste à la 2e tentative !</span>' : '<span class="okmsg">✔ Bravo !</span>'; return end(tries === 1); }
+        if (tries < EX_TRIES) { // les bonnes associations restent, on refait seulement les autres
+          okRows.forEach((ok, i) => { if (!ok) val[i] = null; }); const nx = val.findIndex(v => !v); act = nx < 0 ? 0 : nx;
+          msg0 = '<span class="soft">Certaines associations étaient fausses : elles sont vidées. Essaie encore !</span>'; draw(); return;
+        }
+        locked = true; q.pairs.forEach((p, i) => { val[i] = rights.find(x => x.i === i); });
+        draw(okRows.map(() => true)); body.querySelector('#fb').innerHTML = '<span class="soft">Voici les bonnes associations.</span>'; end(false);
+      };
     };
-    addHint(); body.insertBefore(hintBox, document.getElementById('fb'));
+    let msg0 = '';
+    addHint(); // crée le bouton d'indice une fois ; draw() le replace à chaque rafraîchissement
+    draw();
     return;
   }
 
@@ -212,7 +248,7 @@ function renderExercise(q, body, done) {
       body.innerHTML = `<div class="card"><div class="muted">Ma réponse (dans l'ordre)</div><ol class="mine">${mine.length ? mine.map(x => `<li>${esc(x.t)}</li>`).join('') : '<li class="muted">Touche les éléments ci-dessous…</li>'}</ol></div>
         <div class="chipsrow">${pool.filter(x => !mine.includes(x)).map(x => `<button class="choice" data-i="${x.i}">${esc(x.t)}</button>`).join('')}</div>
         <div id="fb" class="fb" role="status"></div>
-        <div class="row"><button class="ghost" id="clr" ${mine.length ? '' : 'disabled'}>Effacer</button><button id="chk" ${mine.length === pool.length ? '' : 'disabled'} style="flex:1">Vérifier</button></div>`;
+        <div class="actbar"><div class="row"><button class="ghost" id="clr" ${mine.length ? '' : 'disabled'}>Effacer</button><button id="chk" ${mine.length === pool.length ? '' : 'disabled'} style="flex:1">Vérifier</button></div></div>`;
       body.querySelectorAll('.choice').forEach(b => b.onclick = () => { mine.push(pool.find(x => x.i === +b.dataset.i)); draw(); });
       document.getElementById('clr').onclick = () => { mine = []; draw(); };
       document.getElementById('chk').onclick = () => {

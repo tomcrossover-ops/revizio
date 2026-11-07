@@ -33,6 +33,7 @@ function route() {
   const path = location.hash.replace(/^#/, '') || '/';
   const area = path.startsWith('/new') || path === '/import' ? 'new' : path === '/library' || path.startsWith('/card/') ? 'library' : path === '/settings' || path === '/profile' ? 'settings' : 'home';
   syncAiUi();
+  document.body.classList.toggle('focus', /^\/(quiz\/|train\/|daily\/run$|daily\/quiz$)/.test(path)); // pendant un exercice : pas de menu, un bouton Quitter
   if ((path.startsWith('/new') || path === '/import') && !hasAI()) { location.hash = '#/'; return; } // pages de création : réservées à l'IA
   document.querySelectorAll('nav a').forEach(a => { const on = a.dataset.nav === area; a.classList.toggle('active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   for (const [re, fn] of routes) {
@@ -55,12 +56,22 @@ function enhanceA11y() {
   });
 }
 let a11yQueued = false;
-function queueA11y() { if (a11yQueued) return; a11yQueued = true; setTimeout(() => { a11yQueued = false; enhanceA11y(); }, 0); }
+function queueA11y() { guardNext(); if (a11yQueued) return; a11yQueued = true; setTimeout(() => { a11yQueued = false; enhanceA11y(); }, 0); }
 if (typeof MutationObserver !== 'undefined') new MutationObserver(queueA11y).observe(document.getElementById('app'), { childList: true, subtree: true });
 function announceScreen() {
   const h = document.querySelector('#app h1, #app h2');
   document.title = (h && h.textContent.trim() ? h.textContent.trim() + ' · ' : '') + 'Révizio';
   const app = document.getElementById('app'); if (app && app.focus) app.focus({ preventScroll: true });
+}
+document.addEventListener('click', e => { // bouton « Quitter » d'un exercice : confirmation, puis retour
+  const q = e.target.closest && e.target.closest('[data-quit]'); if (!q) return;
+  e.preventDefault();
+  if (window.confirm(q.dataset.msg || 'Quitter cet exercice ?')) location.hash = q.dataset.quit;
+});
+/* Garde anti double-tap : un bouton « Suivant » qui vient d'apparaître ne répond qu'après 0,45 s */
+function guardNext() {
+  if (window.REVIZIO_NOGUARD) return;
+  document.querySelectorAll('#app #nx:not([data-g])').forEach(b => { b.dataset.g = '1'; b.disabled = true; setTimeout(() => { b.disabled = false; }, 450); });
 }
 window.addEventListener('hashchange', route);
 window.addEventListener('hashchange', () => setTimeout(announceScreen, 60));
@@ -420,23 +431,34 @@ function viewQuiz(id, mode) {
   }
   if (!qs || !qs.length) { toast(mini ? 'Aucune question fragile à retravailler, bravo !' : 'Pas de questions pour ce cours.'); location.hash = mini ? '#/daily' : '#/'; return; }
   let i = 0, score = 0; const results = [];
+  const backTo = mini ? '#/daily' : '#/course/' + c.id;
+  const draft0 = !mini && !mode && c.bilanDraft; // bilan interrompu : on propose de le reprendre
+  if (draft0) {
+    const map = new Map(c.questions.map(q => [qid(q), q])), d = draft0;
+    if (d.i > 0 && d.i <= d.ids.length && d.ids.every(id => map.has(id)) && window.confirm(`Reprendre ton bilan là où tu t'es arrêté (question ${Math.min(d.i + 1, d.ids.length)} sur ${d.ids.length}) ?\nOK = reprendre, Annuler = nouveau bilan.`)) {
+      qs = d.ids.map(id => ({ q: map.get(id), c })); i = d.i; score = d.score; c.lastBilan = d.ids.slice();
+      d.res.forEach(r => results.push({ q: map.get(r.id), c, ok: r.ok }));
+    } else { c.bilanDraft = null; save(); }
+  }
   const step = () => {
     if (i >= qs.length) return end();
     const { q, c: qc } = qs[i];
     $app.innerHTML = `
-      <div class="row between"><span class="muted">${mode === 'weak' ? 'Quiz ciblé · ' : mode === 'missed' ? 'Questions ratées · ' : mini ? 'Mini-quiz · ' : 'Bilan de compétence · '}Question ${i + 1} / ${qs.length}</span>${subjChip(qc.subject)}</div>
+      <div class="qhead"><span class="muted">${mode === 'weak' ? 'Quiz ciblé · ' : mode === 'missed' ? 'Questions ratées · ' : mini ? 'Mini-quiz · ' : 'Bilan de compétence · '}Question ${i + 1} / ${qs.length}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${subjChip(qc.subject)}<button type="button" class="ghost small quit" data-quit="${backTo}" data-msg="${!mini && !mode ? 'Quitter le bilan ? Ta progression est gardée : tu pourras le reprendre.' : 'Quitter ? Tes réponses de cette série ne seront pas comptées.'}">✕ Quitter</button></span></div>
       <div class="bar" style="margin:8px 0"><i style="width:${i / qs.length * 100}%"></i></div>
       <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${exLabel(q)} ${levelDots(q)}</div></div><div id="body"></div>`;
     const body = document.getElementById('body');
     const finish = ok => {
       if (ok) score++;
       results.push({ q, c: qc, ok });
+      if (!mini && !mode) { c.bilanDraft = { ids: qs.map(x => qid(x.q)), i: i + 1, score, res: results.map(r => ({ id: qid(r.q), ok: r.ok })) }; save(); } // progression gardée
       body.insertAdjacentHTML('beforeend', `${q.explanation ? `<div class="explain">${esc(q.explanation)}</div>` : ''}${!ok && q.pitfall ? `<div class="explain"><b>Erreur fréquente :</b> ${esc(q.pitfall)}</div>` : ''}<button id="nx" style="width:100%">${i + 1 < qs.length ? 'Suivant' : 'Voir mon bilan'}</button>`);
       document.getElementById('nx').onclick = () => { i++; step(); };
     };
     renderExercise(q, body, ok => finish(ok));
   };
   const end = () => {
+    if (c && c.bilanDraft) { c.bilanDraft = null; save(); }
     if (!mini && !mode) c.scores.push({ date: Date.now(), score, total: qs.length, mode: 'full' });
     recordQuizResults(results);
     const pct = Math.round(score / qs.length * 100), wrong = results.filter(r => !r.ok).map(r => r.q);

@@ -17,7 +17,7 @@ const { make, check, done } = require('./harness');
   // QCM : le résultat n'est pas signalé par la seule couleur
   const body = h.w.document.createElement('div'); h.w.document.body.appendChild(body);
   let res; T.renderExercise({ type: 'qcm', q: 'Q ?', choices: ['a', 'b', 'c'], answer: 1, explanation: '' }, body, ok => { res = ok; });
-  body.querySelector('.choice[data-k="0"]').click();
+  body.querySelector('.choice[data-k="0"]').click(); { const o = body.querySelector('#ok'); if (o) o.click(); }
   check('QCM : bonne réponse annoncée en texte', /bonne réponse/.test(body.querySelector('.choice.good').textContent));
   check('QCM : mauvaise réponse annoncée en texte', /incorrecte/.test(body.querySelector('.choice.bad').textContent));
   done();

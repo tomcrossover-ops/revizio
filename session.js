@@ -119,7 +119,7 @@ function viewSession() {
   if (!S.steps.length) { toast('Rien de prioritaire aujourd\'hui : crée ou révise un cours.'); location.hash = '#/daily'; return; }
   const total = S.total, res = { yes: 0, almost: 0, no: 0 }, exResults = [], explained = [], xp0 = db.activity.xp;
   let i = -1, timer = null;
-  const head = st => `<div class="row between"><span class="muted">Étape ${i + 1} / ${total}</span><span><span class="tag steptag">${STEP_LABEL[st.kind]}</span> ${st.c ? subjChip(st.c.subject) : st.card ? subjChip(st.card.subject) : ''}</span></div>
+  const head = st => `<div class="qhead"><span class="muted">Étape ${i + 1} / ${total}</span><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="tag steptag">${STEP_LABEL[st.kind]}</span> ${st.c ? subjChip(st.c.subject) : st.card ? subjChip(st.card.subject) : ''}<button type="button" class="ghost small quit" data-quit="#/daily" data-msg="Quitter la séance ? Ce que tu as déjà fait est compté seulement à la fin.">✕ Quitter</button></span></div>
     <div class="bar" style="margin:8px 0"><i style="width:${i / total * 100}%"></i></div>`;
 
   const intro = () => {

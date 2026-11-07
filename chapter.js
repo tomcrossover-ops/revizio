@@ -153,8 +153,7 @@ function viewTrain(id, mode) {
   const step = () => {
     if (i >= qs.length) return end();
     const q = qs[i];
-    $app.innerHTML = `${backLink('#/course/' + id, 'Chapitre')}
-      <div class="row between"><span class="muted">${title} · ${i + 1} / ${qs.length}</span><span class="chip">Sans note</span></div>
+    $app.innerHTML = `<div class="qhead"><span class="muted">${title} · ${i + 1} / ${qs.length}</span><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="chip">Sans note</span><button type="button" class="ghost small quit" data-quit="#/course/${id}" data-msg="Quitter ? Tes réponses de cette série ne seront pas comptées.">✕ Quitter</button></span></div>
       <div class="bar" style="margin:8px 0"><i style="width:${i / qs.length * 100}%"></i></div>
       ${target ? remediationNote(c, q) : ''}
       <div class="card"><b>${qHtml(q)}</b><div class="muted" style="margin-top:4px;font-size:.8rem">${exLabel(q)} ${levelDots(q)}</div></div><div id="body"></div>`;

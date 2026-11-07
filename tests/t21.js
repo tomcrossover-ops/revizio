@@ -23,7 +23,7 @@ const empty = { v: 2, settings: { level: '5e', apiKey: '', name: 'Léo' }, cours
   check('écoute : boutons dans l\'énoncé, texte caché aux lecteurs d\'écran', /class="say"/.test(qh) && !qh.includes('aria-label="Écouter : ') && /l'enregistrement/.test(qh) && T.exLabel(q1).startsWith('🎧'), qh.slice(0, 200));
   let b = body(), res = null; T.renderExercise(q1, b, ok => { res = ok; });
   check('écoute : pas de bouton « bonne réponse » avant de répondre', !b.querySelector('.sayafter'));
-  b.querySelector('button.choice[data-k="' + q1.answer + '"]').click();
+  b.querySelector('button.choice[data-k="' + q1.answer + '"]').click(); { const o = b.querySelector('#ok'); if (o) o.click(); }
   const after = b.querySelector('.sayafter button.say');
   check('écoute : après la réponse, on peut réécouter', res === true && !!after && after.dataset.say === q1.audio && after.dataset.lang === 'it-IT');
   // --- dictée

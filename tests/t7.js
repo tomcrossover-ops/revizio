@@ -27,7 +27,7 @@ const { make, check, done } = require('./harness');
     const q = $('#app .card b') && $('#app .card b').textContent;
     if ($('.choice')) {
       const wantWrong = /Question [12] /.test(q);
-      const isVF = $$('.choice').some(b => b.textContent === 'Vrai');
+      const isVF = $$('.choice').some(b => b.textContent.endsWith('Vrai'));
       const idx = isVF ? 0 : 1; // bonne réponse : index 1 (qcm) / 0 (vf)
       const pick = wantWrong ? (idx === 1 ? 0 : 1) : idx;
       ($$('.choice').find(b => +b.dataset.k === pick) || $$('.choice')[pick]).click();

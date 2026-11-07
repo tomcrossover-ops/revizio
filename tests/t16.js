@@ -31,7 +31,7 @@ const { make, check, done } = require('./harness'); const fs = require('fs');
   for (let i = 0; i < 40; i++) {
     T.renderExercise(qq, body, () => {});
     const btns = [...body.querySelectorAll('.choice')]; seen.add(btns.map(b => b.dataset.k).join(''));
-    if (btns.some(b => b.textContent !== qq.choices[+b.dataset.k])) okMap = false;
+    if (btns.some(b => b.querySelector('.tx').textContent !== qq.choices[+b.dataset.k])) okMap = false;
   }
   check('QCM : ordre des choix mélangé (' + seen.size + ' ordres vus)', seen.size > 5, seen.size);
   check('QCM : data-k garde la bonne correspondance', okMap);
