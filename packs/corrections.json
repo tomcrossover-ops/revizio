@@ -168,6 +168,14 @@
   {
    "id": "v323-methods-francais-6e",
    "file": "fixes-methods-francais.json"
+  },
+  {
+   "id": "v324-methods-francais",
+   "file": "fixes-methods-francais.json"
+  },
+  {
+   "id": "v324-methods-maths",
+   "file": "fixes-methods-maths.json"
   }
  ]
 }

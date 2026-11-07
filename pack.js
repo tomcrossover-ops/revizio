@@ -140,6 +140,7 @@ async function applyCorrections() {
         const m = normLesson([{ ...it.method, content: it.method && it.method.content }])[0];
         db.courses.filter(c => c.origin === 'pack' && c.subject === d.subject && c.level === it.level && c.catalogTitle === it.catalogTitle).forEach(c => {
           if (m) { const i = c.lesson.findIndex(x => x.method || /^Méthode/.test(x.title)); if (i >= 0) c.lesson[i] = m; else c.lesson.push(m); n++; }
+          if (it.card && !db.cards.some(k => k.courseId === c.id && k.tag === 'methode')) { const nc = normCards([it.card], { subject: c.subject, chapter: c.title, courseId: c.id }); db.cards.push(...nc); n += nc.length; }
           const have = new Set(c.questions.map(q => normText(q.q)));
           normQuestions(it.questions || []).forEach(q => { if (!have.has(normText(q.q))) { c.questions.push(q); have.add(normText(q.q)); n++; } });
         });
