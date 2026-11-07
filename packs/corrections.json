@@ -208,6 +208,10 @@
   {
    "id": "v325-methods-vietnamien",
    "file": "fixes-methods-vietnamien.json"
+  },
+  {
+   "id": "v326-methods-italien",
+   "file": "fixes-methods-italien.json"
   }
  ]
 }

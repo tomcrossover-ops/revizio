@@ -8,7 +8,7 @@ const fetchImpl = async u => { const f = P + String(u).replace(/^packs\//, ''); 
     fs.readdirSync(P).filter(f => /^(CM|\d)/.test(f)).forEach(f => pack(f).courses.forEach(c => { const m = c.lesson.find(s => s.method); if (!m) return; nm++;
       const o = c.questions.filter(q => q.type === 'ordre' && /^méthode/.test(q.skill)); const k = (c.cards || []).filter(x => x.tag === 'methode');
       if (m.steps.length < 4 || o.length !== 1 || o[0].items.length !== m.steps.length || k.length !== 1 || !/^1\. /.test(k[0].a) || k[0].say !== false) bad += f + ':' + c.catalogTitle + ' '; }));
-    check('tous packs : ' + nm + ' chapitres avec méthode, étapes/ordre/carte cohérents', nm >= 200 && !bad, bad); }
+    check('tous packs : ' + nm + ' chapitres avec méthode, étapes/ordre/carte cohérents', nm >= 300 && !bad, bad); }
   const pk = pack('6e-francais.json');
   check('pack 6e Français : chaque chapitre a une méthode en ≥ 4 étapes', pk.courses.length === 11 && pk.courses.every(c => { const m = c.lesson.find(s => s.method); return m && m.steps.length >= 4 && m.steps.length <= 6 && m.content; }));
   check('pack 6e Français : exercices de méthode (ordre des étapes + applications) dans chaque chapitre', pk.courses.every(c => { const mq = c.questions.filter(q => /^méthode/.test(q.skill)); return mq.length >= 5 && mq.some(q => q.type === 'ordre') && mq.filter(q => q.type !== 'ordre').length >= 4; }));
