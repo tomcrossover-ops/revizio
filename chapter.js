@@ -123,7 +123,7 @@ function pickTrain(c, n) {
   const fresh = pool.filter(q => !last.has(qid(q)));
   if (fresh.length >= Math.min(n, pool.length)) pool = fresh; // on évite de reposer les mêmes questions
   const weak = new Set(weakQuestions(c).map(qid));
-  pool = shuffle(pool);
+  pool = uniqueQs(shuffle(pool));
   const picked = pool.filter(q => weak.has(qid(q))).slice(0, Math.ceil(n / 2));
   pool.forEach(q => { if (picked.length < n && !picked.includes(q)) picked.push(q); });
   // varier les formats : on évite deux fois le même type de suite quand c'est possible
@@ -143,7 +143,7 @@ function viewTrain(id, mode) {
   const target = mode === 'target';
   let qs;
   if (target) {
-    const weak = shuffle(weakQuestions(c)), last = new Set(c.lastTrain || []), fresh = weak.filter(q => !last.has(qid(q)));
+    const weak = uniqueQs(shuffle(weakQuestions(c))), last = new Set(c.lastTrain || []), fresh = weak.filter(q => !last.has(qid(q)));
     qs = (fresh.length >= 3 ? fresh : weak).slice(0, TARGET_N);
   } else qs = pickTrain(c, TRAIN_N);
   if (!qs.length) { toast(target ? 'Aucune notion fragile : bravo !' : 'Pas de questions pour ce chapitre.'); location.hash = '#/course/' + id; return; }

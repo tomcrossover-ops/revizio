@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.18'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.19'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -44,6 +44,10 @@ const clip = (s, n) => { s = String(s ?? '').trim(); return s.length > n ? s.sli
 const subj = k => SUBJECTS[k] || SUBJECTS.autre;
 const subjChip = k => `<span class="tag" style="background:${subj(k).color}">${esc(subj(k).label)}</span>`;
 const tagChip = k => `<span class="chip">${esc(TAGS[k] || TAGS.definition)}</span>`;
+/* Doublons dans une même série : même énoncé (ou même audio) ne sort qu'une fois. */
+const kNorm = s => String(s ?? '').toLowerCase().normalize('NFC').replace(/[\s.,;:!?'"«»]+/g, ' ').trim(); // garde les symboles, exposants et caractères non latins
+const qKey = q => q.audio ? 'a:' + kNorm(q.audio) : q.type === 'repete' ? 'a:' + kNorm(q.answer) : (q.type === 'assoc' ? kNorm(q.q) + '|' + kNorm(JSON.stringify(q.pairs)) : q.type === 'ordre' ? kNorm(q.q) + '|' + kNorm(JSON.stringify(q.items)) : kNorm(q.q));
+const uniqueQs = (list, get = x => x) => { const seen = new Set(); return list.filter(x => { const k = qKey(get(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
 const normText = s => String(s ?? '').toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const safeImg = s => (typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)) ? s : '';
 

@@ -406,7 +406,7 @@ function viewDaily() {
 function viewQuiz(id, mode) {
   const mini = id === 'mini', c = mini ? null : getCourse(id);
   let qs;
-  if (mini) qs = shuffle(smartPlan().questions);
+  if (mini) qs = uniqueQs(shuffle(smartPlan().questions), x => x.q);
   else if (c) {
     let pool;
     if (mode === 'weak') pool = weakQuestions(c);
@@ -415,7 +415,7 @@ function viewQuiz(id, mode) {
       const last = new Set(c.lastBilan || []), fresh = c.questions.filter(q => !last.has(qid(q)));
       pool = fresh.length >= Math.min(BILAN_MIN, c.questions.length) ? fresh : c.questions;
     }
-    qs = shuffle(pool).slice(0, mode === 'weak' || mode === 'missed' ? 10 : BILAN_MAX).map(q => ({ q, c }));
+    qs = uniqueQs(shuffle(pool)).slice(0, mode === 'weak' || mode === 'missed' ? 10 : BILAN_MAX).map(q => ({ q, c }));
     if (!mode) c.lastBilan = qs.map(x => qid(x.q));
   }
   if (!qs || !qs.length) { toast(mini ? 'Aucune question fragile à retravailler, bravo !' : 'Pas de questions pour ce cours.'); location.hash = mini ? '#/daily' : '#/'; return; }

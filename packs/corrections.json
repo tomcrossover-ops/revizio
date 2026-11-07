@@ -86,6 +86,38 @@
     "level": 2,
     "skill": "dates"
    }
+  },
+  {
+   "id": "v319-mois",
+   "level": "4e",
+   "subject": "italien",
+   "catalogTitle": "L'heure, les jours et les mois",
+   "match": "Relie chaque mois à sa traduction.",
+   "question": {
+    "type": "assoc",
+    "q": "Relie chaque mois à sa traduction.",
+    "pairs": [
+     [
+      "gennaio",
+      "janvier"
+     ],
+     [
+      "maggio",
+      "mai"
+     ],
+     [
+      "agosto",
+      "août"
+     ],
+     [
+      "settembre",
+      "septembre"
+     ]
+    ],
+    "explanation": "Gennaio (janvier), maggio (mai), agosto (août), settembre (septembre). Les mois s'écrivent sans majuscule en italien.",
+    "level": 1,
+    "skill": "mois"
+   }
   }
  ],
  "batches": [

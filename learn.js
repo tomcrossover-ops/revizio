@@ -76,9 +76,9 @@ function smartPlan() {
   }).slice(0, SMART_CARDS);
   // questions : uniquement sur les notions fragiles, réparties entre les cours
   const pools = db.courses.map(c => ({ c, qs: shuffle(weakQuestions(c)) })).filter(p => p.qs.length);
-  const questions = []; let k = 0;
+  const questions = [], seenK = new Set(); let k = 0;
   while (questions.length < SMART_QUESTIONS && pools.some(p => p.qs.length > k)) {
-    pools.forEach(p => { if (p.qs[k] && questions.length < SMART_QUESTIONS) questions.push({ q: p.qs[k], c: p.c }); });
+    pools.forEach(p => { if (p.qs[k] && questions.length < SMART_QUESTIONS && !seenK.has(qKey(p.qs[k]))) { seenK.add(qKey(p.qs[k])); questions.push({ q: p.qs[k], c: p.c }); } });
     k++;
   }
   return { items, questions, minutes: Math.max(3, Math.round(items.length * 0.5 + questions.length * 1)) };

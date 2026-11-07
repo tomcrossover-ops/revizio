@@ -5,7 +5,7 @@ const fetchImpl = async u => { const f = P + String(u).replace(/^packs\//, ''); 
 const store = () => ({ v: 2, settings: { level: '5e', apiKey: '', name: 'Léo' }, courses: [], cards: [], decks: [], activity: { days: [] } });
 (async () => {
   const fx = pack('corrections.json');
-  check('corrections : fichier valide (5 corrections)', fx.format === 'revizio-corrections' && fx.fixes.length === 5 && fx.fixes.every(f => f.id && f.match && f.question && f.catalogTitle));
+  check('corrections : fichier valide (6 corrections)', fx.format === 'revizio-corrections' && fx.fixes.length === 6 && fx.fixes.every(f => f.id && f.match && f.question && f.catalogTitle));
   const h = make({ store: store(), fetchImpl }), T = h.t;
   T.importPack(pack('5e-techno.json'));
   const co = T.db.courses.find(c => c.catalogTitle === "Analyse d'un objet technique");

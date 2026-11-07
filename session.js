@@ -24,7 +24,7 @@ function pickExercises(k, avoid = new Set()) {
   }).filter(p => p.qs.length);
   // priorité aux matières des prochains jours de cours
   const prio = prepSubjects(); pools.sort((a, b) => { const r = x => { const i = prio.indexOf(x.c.subject); return i < 0 ? 99 : i; }; return r(a) - r(b); });
-  const out = []; let lastType = '';
+  const out = [], seenK = new Set(); let lastType = '';
   while (out.length < k && pools.some(p => p.qs.length)) {
     let moved = false;
     for (const p of pools) {
@@ -32,7 +32,9 @@ function pickExercises(k, avoid = new Set()) {
       if (!p.qs.length) continue;
       const j = p.qs.findIndex(q => q.type !== lastType); // évite deux fois le même format de suite
       const q = p.qs.splice(j < 0 ? 0 : j, 1)[0];
-      out.push({ kind: 'ex', q, c: p.c }); lastType = q.type; moved = true;
+      moved = true;
+      if (seenK.has(qKey(q))) continue; // même question (ou même audio) déjà dans la séance
+      seenK.add(qKey(q)); out.push({ kind: 'ex', q, c: p.c }); lastType = q.type;
     }
     if (!moved) break;
   }
