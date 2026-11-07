@@ -137,14 +137,17 @@ async function applyCorrections() {
     try { const r = await fetch('packs/' + b.file); if (!r.ok) continue; d = await r.json(); } catch (e) { continue; }
     if (!d || !Array.isArray(d.items)) continue;
     const by = {};
-    d.items.forEach(it => { const k = it.level + '|' + it.catalogTitle; (by[k] = by[k] || new Map()).set(normText(it.match), it.explanation); });
-    db.courses.filter(c => c.origin === 'pack' && c.subject === d.subject).forEach(c => {
-      const m = by[c.level + '|' + c.catalogTitle];
+    d.items.forEach(it => { const k = (it.subject || d.subject) + '|' + it.level + '|' + it.catalogTitle; (by[k] = by[k] || new Map()).set(normText(it.match), it); });
+    db.courses.filter(c => c.origin === 'pack').forEach(c => {
+      const m = by[c.subject + '|' + c.level + '|' + c.catalogTitle];
       if (!m) return;
       c.questions.forEach(q => {
-        if (q.audio || (q.explanation && String(q.explanation).length >= 15)) return;
-        const e = m.get(normText(q.q));
-        if (e) { q.explanation = e; n++; }
+        if (q.audio) return;
+        const it = m.get(normText(q.q));
+        if (!it) return;
+        if (Array.isArray(it.choices)) { // nouveaux choix d'un QCM (même nombre de choix, bonne réponse indiquée)
+          if (q.type === 'qcm' && q.choices.length === it.choices.length && Number.isInteger(it.answer) && it.answer >= 0 && it.answer < it.choices.length) { q.choices = it.choices.slice(); q.answer = it.answer; n++; }
+        } else if (it.explanation && !(q.explanation && String(q.explanation).length >= 15)) { q.explanation = it.explanation; n++; }
       });
     });
     done.push(b.id);

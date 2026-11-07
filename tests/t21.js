@@ -8,7 +8,7 @@ const empty = { v: 2, settings: { level: '5e', apiKey: '', name: 'Léo' }, cours
   let h = make({ store: JSON.parse(JSON.stringify(empty)), fetchImpl }); const spoken = fakeSpeech(h.w), T = h.t, D = h.w.document;
   // --- contenu des packs
   let nAudio = 0, bad = 0, types = new Set();
-  fs.readdirSync(P).filter(f => /-(langues|italien|vietnamien|espagnol|japonais)\.json$/.test(f)).forEach(f => pack(f).courses.forEach(c => {
+  fs.readdirSync(P).filter(f => !f.startsWith('fixes-') && /-(langues|italien|vietnamien|espagnol|japonais)\.json$/.test(f)).forEach(f => pack(f).courses.forEach(c => {
     const qs = T.normQuestions(c.questions); if (qs.length !== c.questions.length) bad++;
     qs.filter(q => q.audio).forEach(q => { nAudio++; types.add(q.type + (q.ecoute ? '+e' : '')); if (!q.lang || (q.type === 'repete' && q.answer !== q.audio) || (q.type === 'qcm' && (q.choices.length !== 4 || new Set(q.choices).size !== 4))) bad++; });
     if (c.questions.some(q => !q.lang)) bad++;

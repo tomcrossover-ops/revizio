@@ -108,6 +108,30 @@
   {
    "id": "v317-expl-techno",
    "file": "fixes-expl-techno.json"
+  },
+  {
+   "id": "v318-expl-svt",
+   "file": "fixes-expl-svt.json"
+  },
+  {
+   "id": "v318-expl-langues",
+   "file": "fixes-expl-langues.json"
+  },
+  {
+   "id": "v318-expl-italien",
+   "file": "fixes-expl-italien.json"
+  },
+  {
+   "id": "v318-expl-vietnamien",
+   "file": "fixes-expl-vietnamien.json"
+  },
+  {
+   "id": "v318-expl-espagnol",
+   "file": "fixes-expl-espagnol.json"
+  },
+  {
+   "id": "v318-choices",
+   "file": "fixes-choices.json"
   }
  ]
 }
