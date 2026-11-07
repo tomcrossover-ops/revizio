@@ -12,7 +12,7 @@ const P = __dirname + '/../packs/', pack = n => JSON.parse(fs.readFileSync(P + n
   let bad = [];
   files.forEach(f => pack(f + '.json').courses.forEach(c => {
     const types = new Set(c.questions.map(q => q.type));
-    if (c.cards.length < 8 || c.questions.length < 8 || types.size < 3 || !c.lesson.length || c.cards.some(k => !k.say)) bad.push(f + ' ' + c.title);
+    if (c.cards.length < 8 || c.questions.length < 8 || types.size < 3 || !c.lesson.length || c.cards.some(k => !k.say && k.tag !== 'methode')) bad.push(f + ' ' + c.title);
     const cat = T.THEMES && 0; // (catalogue vérifié plus bas)
     if (T.normQuestions(c.questions).length !== c.questions.length) bad.push('questions ' + c.title);
     c.questions.filter(q => q.type === 'qcm').forEach(q => { if (new Set(q.choices).size !== q.choices.length) bad.push('doublon ' + c.title + ' ' + q.q); });

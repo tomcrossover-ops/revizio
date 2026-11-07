@@ -176,6 +176,38 @@
   {
    "id": "v324-methods-maths",
    "file": "fixes-methods-maths.json"
+  },
+  {
+   "id": "v325-methods-espagnol",
+   "file": "fixes-methods-espagnol.json"
+  },
+  {
+   "id": "v325-methods-histgeo",
+   "file": "fixes-methods-histgeo.json"
+  },
+  {
+   "id": "v325-methods-japonais",
+   "file": "fixes-methods-japonais.json"
+  },
+  {
+   "id": "v325-methods-langues",
+   "file": "fixes-methods-langues.json"
+  },
+  {
+   "id": "v325-methods-physique",
+   "file": "fixes-methods-physique.json"
+  },
+  {
+   "id": "v325-methods-svt",
+   "file": "fixes-methods-svt.json"
+  },
+  {
+   "id": "v325-methods-techno",
+   "file": "fixes-methods-techno.json"
+  },
+  {
+   "id": "v325-methods-vietnamien",
+   "file": "fixes-methods-vietnamien.json"
   }
  ]
 }
