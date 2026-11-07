@@ -606,4 +606,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && swReg) swReg.update().catch(() => {}); });
 }
 route();
-enrichAudio().then(n => { if (n) toast('🎧 Exercices d\'écoute ajoutés à tes chapitres de langues'); }).catch(() => {}); // hors ligne : on réessaiera au prochain démarrage
+applyCorrections().catch(() => 0).then(() => enrichAudio()).then(n => { if (n) toast('🎧 Exercices d\'écoute ajoutés à tes chapitres de langues'); }).catch(() => {}); // hors ligne : on réessaiera au prochain démarrage

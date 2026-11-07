@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.15'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.16'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -134,6 +134,7 @@ function applyBackup(d, mode) {
     db.activity.xp = Math.max(db.activity.xp || 0, m.activity.xp || 0);
     takeSettings(!db.settings.profileDone && !!inc && !!inc.profileDone);
   }
+  if (res.courses) db.settings.fixesDone = []; // des chapitres anciens sont arrivés : on rejoue les corrections de contenu (sans effet si déjà à jour)
   save();
   return res;
 }

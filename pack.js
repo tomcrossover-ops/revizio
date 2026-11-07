@@ -112,6 +112,26 @@ async function enrichAudio() {
   save();
   return n;
 }
+/* Corrections de contenu : remplace, dans les chapitres déjà importés, une question corrigée depuis (une seule fois par correction).
+   La question est retrouvée par son énoncé d'origine ; son identifiant est conservé. Retourne le nombre de questions corrigées. */
+async function applyCorrections() {
+  let list;
+  try { const r = await fetch('packs/corrections.json'); if (!r.ok) return 0; list = (await r.json()).fixes; } catch (e) { return 0; }
+  if (!Array.isArray(list)) return 0;
+  const done = db.settings.fixesDone = Array.isArray(db.settings.fixesDone) ? db.settings.fixesDone : [];
+  let n = 0;
+  list.forEach(f => {
+    if (!f || done.includes(f.id)) return;
+    db.courses.filter(c => c.origin === 'pack' && c.level === f.level && c.subject === f.subject && sameChapter(c, { subject: f.subject, level: f.level, catalogTitle: f.catalogTitle, title: f.catalogTitle })).forEach(c => {
+      const i = c.questions.findIndex(q => normText(q.q) === normText(f.match));
+      const nq = normQuestions([f.question])[0];
+      if (i >= 0 && nq) { c.questions[i] = { ...nq, id: c.questions[i].id }; n++; }
+    });
+    done.push(f.id);
+  });
+  if (n || list.length) save();
+  return n;
+}
 /* Réglages : packs fournis + import d'un fichier */
 async function packSettingsHtml() {
   const idx = await loadPackIndex();

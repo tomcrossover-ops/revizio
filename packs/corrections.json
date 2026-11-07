@@ -1,0 +1,91 @@
+{
+ "format": "revizio-corrections",
+ "version": 1,
+ "fixes": [
+  {
+   "id": "v316-minitel",
+   "level": "5e",
+   "subject": "techno",
+   "catalogTitle": "Analyse d'un objet technique",
+   "match": "Range ces objets du plus ancien au plus récent.",
+   "question": {
+    "type": "ordre",
+    "q": "Range ces objets du plus ancien au plus récent.",
+    "items": [
+     "Téléphone fixe",
+     "Minitel",
+     "Smartphone"
+    ],
+    "explanation": "Évolution de la communication : téléphone fixe (1876), Minitel (années 1980), smartphone (années 2000).",
+    "level": 2,
+    "skill": "évolution"
+   }
+  },
+  {
+   "id": "v316-eclairage",
+   "level": "6e",
+   "subject": "techno",
+   "catalogTitle": "Objets techniques et besoin",
+   "match": "Évolution de l'éclairage.",
+   "question": {
+    "type": "ordre",
+    "q": "Évolution de l'éclairage.",
+    "items": [
+     "Lampe à huile",
+     "Bougie",
+     "Ampoule à filament",
+     "LED"
+    ],
+    "explanation": "Du plus ancien au plus récent : lampe à huile (Antiquité), bougie, ampoule à filament (XIXe siècle), LED (XXe-XXIe siècle).",
+    "level": 2,
+    "skill": "évolution"
+   }
+  },
+  {
+   "id": "v316-geneve",
+   "level": "4e",
+   "subject": "histgeo",
+   "catalogTitle": "Géographie : les mobilités humaines",
+   "match": "La Convention de Genève date de ___.",
+   "question": {
+    "type": "trous",
+    "q": "La Convention de Genève, qui protège les réfugiés, date de ___.",
+    "answer": "1951",
+    "accept": [],
+    "explanation": "Convention de Genève de 1951 sur le statut des réfugiés.",
+    "level": 3,
+    "skill": "droit"
+   }
+  },
+  {
+   "id": "v316-vote3e",
+   "level": "3e",
+   "subject": "histgeo",
+   "catalogTitle": "Histoire : la Ve République et la société française",
+   "match": "Les femmes votent en France depuis 1944.",
+   "question": {
+    "type": "vf",
+    "q": "Les Françaises obtiennent le droit de vote en 1944.",
+    "answer": true,
+    "explanation": "Ordonnance du 21 avril 1944 ; elles votent pour la première fois en 1945.",
+    "level": 1,
+    "skill": "droits"
+   }
+  },
+  {
+   "id": "v316-voteCM2",
+   "level": "CM2",
+   "subject": "histgeo",
+   "catalogTitle": "Histoire : la France depuis 1945",
+   "match": "Les femmes votent en France depuis 1944.",
+   "question": {
+    "type": "vf",
+    "q": "Les Françaises obtiennent le droit de vote en 1944.",
+    "answer": true,
+    "explanation": "Décidé en 1944, utilisé pour la première fois en 1945.",
+    "level": 2,
+    "skill": "dates"
+   }
+  }
+ ]
+}
