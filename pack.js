@@ -135,6 +135,17 @@ async function applyCorrections() {
     if (!b || !b.id || !b.file || done.includes(b.id)) continue;
     let d;
     try { const r = await fetch('packs/' + b.file); if (!r.ok) continue; d = await r.json(); } catch (e) { continue; }
+    if (d && d.format === 'revizio-methods' && Array.isArray(d.items)) { /* leçons « méthode » : remplace la section Méthode, ajoute les exercices manquants (sans doublon) */
+      d.items.forEach(it => {
+        const m = normLesson([{ ...it.method, content: it.method && it.method.content }])[0];
+        db.courses.filter(c => c.origin === 'pack' && c.subject === d.subject && c.level === it.level && c.catalogTitle === it.catalogTitle).forEach(c => {
+          if (m) { const i = c.lesson.findIndex(x => x.method || /^Méthode/.test(x.title)); if (i >= 0) c.lesson[i] = m; else c.lesson.push(m); n++; }
+          const have = new Set(c.questions.map(q => normText(q.q)));
+          normQuestions(it.questions || []).forEach(q => { if (!have.has(normText(q.q))) { c.questions.push(q); have.add(normText(q.q)); n++; } });
+        });
+      });
+      done.push(b.id); continue;
+    }
     if (!d || !Array.isArray(d.items)) continue;
     const by = {};
     d.items.forEach(it => { const k = (it.subject || d.subject) + '|' + it.level + '|' + it.catalogTitle; (by[k] = by[k] || new Map()).set(normText(it.match), it); });

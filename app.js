@@ -273,11 +273,12 @@ function fmt(s) { // lignes « - … » en puces, le reste en paragraphes
   flush();
   return out.join('');
 }
-const lessonBody = (s, subject) => `${fmt(s.content)}${(s.examples || []).length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}${sayBtns(e, subject)}</li>`).join('')}</ul></div>` : ''}`;
+const stepsHtml = s => (s.steps || []).length ? `<ol class="steps">${s.steps.map(x => { const i = x.indexOf(' : '); return i > 0 && i < 60 ? `<li><b>${esc(x.slice(0, i))}</b> : ${esc(x.slice(i + 3))}</li>` : `<li>${esc(x)}</li>`; }).join('')}</ol>` : '';
+const lessonBody = (s, subject) => `${fmt(s.content)}${stepsHtml(s)}${(s.examples || []).length ? `<div class="explain"><b>Exemples</b><ul class="points">${s.examples.map(e => `<li>${esc(e)}${sayBtns(e, subject)}</li>`).join('')}</ul></div>` : ''}`;
 function lessonHtml(c) {
   if (!c.lesson || !c.lesson.length) return '';
   return `<div class="card"><h2 style="margin-top:0">La leçon</h2>
-    ${c.lesson.map(s => `<h3>${esc(s.title)}</h3>${lessonBody(s, c.subject)}`).join('')}
+    ${[...c.lesson.filter(s => s.method), ...c.lesson.filter(s => !s.method)].map(s => s.method ? `<div class="methodbox"><h3>🧭 ${esc(s.title)}</h3>${lessonBody(s, c.subject)}</div>` : `<h3>${esc(s.title)}</h3>${lessonBody(s, c.subject)}`).join('')}
     <p class="muted">Leçon générée par IA d'après le programme de ${esc(c.level || 'ta classe')}. Compare-la avec ton cahier : ton professeur a pu insister sur d'autres points.</p></div>`;
 }
 function viewGenerate(query) {
@@ -469,7 +470,7 @@ function viewQuiz(id, mode) {
       const last = new Set(c.lastBilan || []), fresh = c.questions.filter(q => !last.has(qid(q)));
       pool = fresh.length >= Math.min(BILAN_MIN, c.questions.length) ? fresh : c.questions;
     }
-    qs = uniqueQs(shuffle(pool)).slice(0, mode === 'weak' || mode === 'missed' ? 10 : BILAN_MAX).map(q => ({ q, c }));
+    qs = (mode === 'weak' || mode === 'missed' ? uniqueQs(shuffle(pool)).slice(0, 10) : pickWithMethod(pool, BILAN_MAX)).map(q => ({ q, c }));
     if (!mode) c.lastBilan = qs.map(x => qid(x.q));
   }
   if (!qs || !qs.length) { toast(mini ? 'Aucune question fragile à retravailler, bravo !' : 'Pas de questions pour ce cours.'); location.hash = mini ? '#/daily' : '#/'; return; }

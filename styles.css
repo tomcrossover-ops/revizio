@@ -382,3 +382,10 @@ main#app { padding-bottom: 84px; }
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; font-size: .9rem; }
 .banner .row { flex: none; gap: 6px; }
 .others summary { cursor: pointer; padding: 10px 2px; color: var(--muted); font-weight: 600; min-height: 44px; }
+
+/* ---------- Méthode en étapes (v3.23) ---------- */
+.methodbox { margin: 10px 0 16px; padding: 12px 14px; border: 2px solid var(--primary); border-radius: 14px; background: color-mix(in srgb, var(--primary) 9%, transparent); }
+.methodbox h3 { margin-top: 0; }
+ol.steps { margin: 8px 0; padding-left: 0; list-style: none; counter-reset: st; }
+ol.steps li { counter-increment: st; position: relative; padding: 6px 0 6px 38px; line-height: 1.4; }
+ol.steps li::before { content: counter(st); position: absolute; left: 0; top: 5px; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }

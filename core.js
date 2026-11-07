@@ -1,7 +1,7 @@
 /* Révizio — noyau : données, utilitaires, révision espacée, CSV, API Claude. */
 'use strict';
 
-const APP_VERSION = '3.22'; // à garder identique à VERSION dans sw.js
+const APP_VERSION = '3.23'; // à garder identique à VERSION dans sw.js
 
 const SUBJECTS = {
   maths: { label: 'Maths', short: 'Maths', emoji: '➗', color: '#2563eb' },
@@ -46,6 +46,12 @@ const subjChip = k => `<span class="tag" style="background:${subj(k).color}">${e
 const tagChip = k => `<span class="chip">${esc(TAGS[k] || TAGS.definition)}</span>`;
 /* Doublons dans une même série : même énoncé (ou même audio) ne sort qu'une fois. */
 const kNorm = s => String(s ?? '').toLowerCase().normalize('NFC').replace(/[\s.,;:!?'"«»]+/g, ' ').trim(); // garde les symboles, exposants et caractères non latins
+/* Bilan : au moins 3 questions de méthode (quand le chapitre en a), le reste tiré au hasard */
+const isMethodQ = q => /^méthode/.test(q.skill || '');
+function pickWithMethod(list, max) {
+  const u = uniqueQs(shuffle(list)), m = u.filter(isMethodQ).slice(0, Math.min(3, max)), rest = u.filter(q => !m.includes(q));
+  return shuffle(m.concat(rest.slice(0, Math.max(0, max - m.length))));
+}
 const qKey = q => q.audio ? 'a:' + kNorm(q.audio) : q.type === 'repete' ? 'a:' + kNorm(q.answer) : (q.type === 'assoc' ? kNorm(q.q) + '|' + kNorm(JSON.stringify(q.pairs)) : q.type === 'ordre' ? kNorm(q.q) + '|' + kNorm(JSON.stringify(q.items)) : kNorm(q.q));
 const uniqueQs = (list, get = x => x) => { const seen = new Set(); return list.filter(x => { const k = qKey(get(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
 const normText = s => String(s ?? '').toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -446,7 +452,7 @@ function courseExtras(r) {
   const d = Math.round(Number(r.duration));
   return { duration: d >= 3 && d <= 60 ? d : 0, objectives: strList(r.objectives, 3, 110), prerequisites: strList(r.prerequisites, 3, 90), pitfalls: strList(r.pitfalls, 3, 160) };
 }
-const normLesson = list => (list || []).filter(s => s && s.title && s.content).map(s => ({ title: String(s.title), content: String(s.content), examples: Array.isArray(s.examples) ? s.examples.map(String) : [] }));
+const normLesson = list => (list || []).filter(s => s && s.title && s.content).map(s => ({ title: String(s.title), content: String(s.content), examples: Array.isArray(s.examples) ? s.examples.map(String) : [], ...(Array.isArray(s.steps) && s.steps.length ? { steps: s.steps.map(x => clip(String(x), 400)).slice(0, 8), method: true } : {}) }));
 /* Fichiers : images réduites en JPEG, PDF en base64 */
 function fileToB64(file) {
   return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(file); });

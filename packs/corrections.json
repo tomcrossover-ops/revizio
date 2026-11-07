@@ -164,6 +164,10 @@
   {
    "id": "v318-choices",
    "file": "fixes-choices.json"
+  },
+  {
+   "id": "v323-methods-francais-6e",
+   "file": "fixes-methods-francais.json"
   }
  ]
 }
