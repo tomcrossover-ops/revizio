@@ -1,0 +1,44 @@
+const { make, check, done } = require('./harness');
+(async () => {
+  const q = { type: 'repete', q: 'Écoute et répète', answer: 'Hello, how are you?', lang: 'en-US', explanation: 'Prononciation.' };
+  const mkSR = beh => class { constructor() { this.__b = beh; } start() { setTimeout(() => this.__b(this), 1); } abort() { } };
+  const run = async (SR, micOn) => {
+    const h = make({ store: { v: 2, settings: { micro: micOn, profileDone: true }, courses: [], cards: [], decks: [], activity: { days: [] } } });
+    if (SR) h.w.webkitSpeechRecognition = SR;
+    const body = h.w.document.createElement('div'); h.w.document.body.appendChild(body);
+    h.t.renderExercise(q, body, () => {});
+    return { h, body, fb: () => body.querySelector('#fb').textContent };
+  };
+  let r = await run(mkSR(s => s.onerror({ error: 'not-allowed' })), true);
+  check('micro activé : bouton 🎤 présent', !!r.body.querySelector('#mic'));
+  r.body.querySelector('#mic').click(); await r.h.wait(40);
+  check('refus du micro : explication pas à pas pour l\'autoriser', /bloqué/.test(r.fb()) && /cadenas/.test(r.fb()) && /sans micro/.test(r.fb()), r.fb());
+  r = await run(mkSR(s => s.onend()), true); r.body.querySelector('#mic').click(); await r.h.wait(40);
+  check('silence (fin sans résultat) : plus de blocage sur « Je t\'écoute »', /rien entendu/.test(r.fb()), r.fb());
+  r = await run(mkSR(s => s.onerror({ error: 'audio-capture' })), true); r.body.querySelector('#mic').click(); await r.h.wait(40);
+  check('aucun micro détecté : message dédié', /Aucun micro/.test(r.fb()));
+  r = await run(mkSR(s => s.onerror({ error: 'network' })), true); r.body.querySelector('#mic').click(); await r.h.wait(40);
+  check('réseau : message dédié', /Internet/.test(r.fb()));
+  r = await run(mkSR(s => s.onresult({ results: [[{ transcript: 'hello how are you' }]] })), true); r.body.querySelector('#mic').click(); await r.h.wait(40);
+  check('reconnaissance OK : « Très proche »', /hello how are you/.test(r.fb()) && /Très proche/.test(r.fb()), r.fb());
+  r = await run(null, true);
+  check('navigateur sans reconnaissance vocale : pas de bouton, mais une explication', !r.body.querySelector('#mic') && /ne sait pas écouter/.test(r.fb()), r.fb());
+  r = await run(mkSR(() => { }), false);
+  check('micro désactivé dans Réglages : lien pour l\'activer, pas de bouton', !r.body.querySelector('#mic') && !!r.body.querySelector('a[href="#/settings"]'));
+  check('on peut toujours se juger sans micro', !!r.body.querySelector('#yes') && !!r.body.querySelector('#no'));
+  // Réglages : bouton « Tester le micro »
+  const h = make({ store: { v: 2, settings: { profileDone: true }, courses: [], cards: [], decks: [], activity: { days: [] } } });
+  await h.go('#/settings');
+  check('Réglages : bouton « Tester le micro »', !!h.$('#micTest'));
+  h.$('#micTest').click(); await h.wait(30);
+  check('Réglages : test sans reconnaissance vocale → explication', /ne sait pas écouter/.test(h.$('#micOut').textContent), h.$('#micOut').textContent);
+  h.w.webkitSpeechRecognition = mkSR(s => s.onresult({ results: [[{ transcript: 'bonjour' }]] }));
+  h.$('#micTest').click(); await h.wait(60);
+  check('Réglages : test réussi → « Ça marche » + consigne', /Ça marche/.test(h.$('#micOut').textContent) && /bonjour/.test(h.$('#micOut').textContent), h.$('#micOut').textContent);
+  h.w.webkitSpeechRecognition = mkSR(s => s.onerror({ error: 'not-allowed' }));
+  h.$('#micTest').click(); await h.wait(60);
+  check('Réglages : test refusé → comment autoriser', /bloqué/.test(h.$('#micOut').textContent));
+  check('Permissions-Policy autorise le micro sur le site', /microphone=\(self\)/.test(require('fs').readFileSync(__dirname + '/../vercel.json', 'utf8')));
+  check('aucune erreur JS', h.errors.length === 0, h.errors.join('|'));
+  done();
+})();

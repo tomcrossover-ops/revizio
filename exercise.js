@@ -129,17 +129,16 @@ function renderExercise(q, body, done) {
       <div class="row"><button class="ko" id="no" style="flex:1">À retravailler</button><button class="ok" id="yes" style="flex:1">Bien dit</button></div>`;
     const fb = body.querySelector('#fb'), mark = ok => { body.querySelectorAll('button').forEach(b => { b.disabled = true; }); tries = 1; end(ok); };
     body.querySelector('#yes').onclick = () => mark(true); body.querySelector('#no').onclick = () => mark(false);
+    if (!SR && db.settings.micro) fb.innerHTML = '<span class="soft">Ce navigateur ne sait pas écouter ta voix (essaie Chrome, Edge ou Safari). Écoute, répète, puis juge-toi honnêtement.</span>';
+    else if (SR && !db.settings.micro) body.querySelector('.muted').insertAdjacentHTML('beforeend', ' <a href="#/settings">Active le micro dans Réglages</a> pour que Révizio t\'écoute.');
     if (mic) body.querySelector('#mic').onclick = () => {
-      let r; try { r = new SR(); } catch (e) { fb.innerHTML = '<span class="soft">Micro indisponible ici.</span>'; return; }
-      r.lang = q.lang; r.interimResults = false; r.maxAlternatives = 3;
       fb.innerHTML = '<span class="soft">Je t\'écoute… parle maintenant.</span>';
-      r.onresult = ev => {
-        const heard = [...ev.results[0]].map(a => a.transcript), want = normText(q.answer).split(' ').filter(Boolean);
+      micListen(q.lang, res => {
+        if (res.error) { fb.innerHTML = `<span class="soft">${esc(res.error === 'unsupported' ? 'Micro indisponible ici. Juge-toi sans micro.' : micErrMsg(res.error))}</span>`; return; }
+        const heard = res.heard, want = normText(q.answer).split(' ').filter(Boolean);
         const best = Math.max(...heard.map(h => { const w = new Set(normText(h).split(' ')); return want.length ? want.filter(x => w.has(x)).length / want.length : 0; }));
         fb.innerHTML = `<div class="card"><div class="muted">J'ai entendu</div><b>${esc(heard[0])}</b><div style="margin-top:6px">${best >= 0.8 ? '<span class="okmsg">✔ Très proche !</span>' : best >= 0.5 ? '<span class="soft">Presque. Réécoute et recommence.</span>' : '<span class="soft">Pas tout à fait. Réécoute puis réessaie (la reconnaissance se trompe aussi parfois).</span>'}</div></div>`;
-      };
-      r.onerror = ev => { fb.innerHTML = `<span class="soft">${ev.error === 'not-allowed' || ev.error === 'service-not-allowed' ? 'Micro refusé : autorise-le dans le navigateur, ou juge-toi sans micro.' : 'Je n\'ai rien entendu. Réessaie, ou juge-toi sans micro.'}</span>`; };
-      try { r.start(); } catch (e) { /* déjà en cours */ }
+      });
     };
     return;
   }

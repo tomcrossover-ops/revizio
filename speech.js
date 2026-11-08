@@ -17,6 +17,35 @@ function sayText(card) {
   if (typeof card.say === 'string' && card.say.trim()) return card.say.trim();
   return card.subject === 'italien' && speakable(card.back) ? card.back.trim() : ''; // repli pour les cartes d'italien sans « say »
 }
+/* ---------- Micro (reconnaissance vocale) : disponibilité, permission, messages d'erreur ---------- */
+const micSR = () => (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
+function micErrMsg(code) {
+  switch (code) {
+    case 'not-allowed': case 'service-not-allowed': return 'Le micro est bloqué. Pour l\'autoriser : sur ordinateur (Chrome, Edge), clique sur le cadenas à gauche de l\'adresse, puis Micro → Autoriser, et recharge la page ; sur iPhone ou iPad, Réglages → Safari → Micro, et Réglages → Confidentialité → Reconnaissance vocale ; sur Android, appuie sur le cadenas de l\'adresse → Autorisations → Micro. Tu peux aussi te juger sans micro.';
+    case 'no-speech': return 'Je n\'ai rien entendu. Rapproche-toi du micro et réessaie, ou juge-toi sans micro.';
+    case 'audio-capture': return 'Aucun micro détecté sur cet appareil. Branche-en un, ou juge-toi sans micro.';
+    case 'network': return 'La reconnaissance vocale a besoin d\'Internet. Vérifie ta connexion et réessaie, ou juge-toi sans micro.';
+    case 'language-not-supported': return 'Ce navigateur ne sait pas écouter cette langue. Juge-toi sans micro.';
+    case 'aborted': return '';
+    default: return 'Le micro n\'a pas fonctionné' + (code ? ' (' + code + ')' : '') + '. Réessaie, ou juge-toi sans micro.';
+  }
+}
+/* Écoute une fois. cb({heard:[…]}) ou cb({error:code}). Garantit un retour même si le navigateur se tait (onend sans résultat). */
+function micListen(lang, cb) {
+  const SR = micSR(); let r, fin = false;
+  const out = o => { if (!fin) { fin = true; clearTimeout(t); cb(o); } };
+  if (!SR) return out({ error: 'unsupported' });
+  try { r = new SR(); } catch (e) { return out({ error: 'unsupported' }); }
+  r.lang = lang; r.interimResults = false; r.maxAlternatives = 3;
+  r.onresult = ev => out({ heard: [...ev.results[0]].map(a => a.transcript) });
+  r.onerror = ev => out({ error: ev.error || 'error' });
+  r.onend = () => out({ error: 'no-speech' });
+  const t = setTimeout(() => { try { r.abort(); } catch (e) { /* rien */ } out({ error: 'no-speech' }); }, 12000);
+  try { r.start(); } catch (e) { out({ error: 'error' }); }
+}
+async function micPermission() { // 'granted' | 'denied' | 'prompt' | '' (inconnu : Safari, Firefox)
+  try { const p = await navigator.permissions.query({ name: 'microphone' }); return p.state; } catch (e) { return ''; }
+}
 /* Le texte lu : on enlève ce qui n'est pas de la parole (flèches, puces, parenthèses…). */
 const cleanSpeech = t => String(t).replace(/[→·=…«»()]/g, ' ').replace(/\s*:\s*/g, ', ').replace(/\s+/g, ' ').trim();
 

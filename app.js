@@ -564,6 +564,7 @@ function viewSettings() {
       <input id="modelCustom" placeholder="Nom exact du modèle" value="${custom ? esc(s.model) : ''}" ${custom ? '' : 'hidden'} autocomplete="off" style="margin-top:6px">
       <label class="check"><input type="checkbox" id="bonus" ${s.bonus !== false ? 'checked' : ''}> Poser une question « pourquoi ? / exemple ? » après une bonne réponse</label>
       <label class="check"><input type="checkbox" id="micro" ${s.micro ? 'checked' : ''}> Activer le micro pour les exercices de prononciation <span class="muted">(facultatif : ton navigateur écoute et transcrit ta voix, parfois via le service de reconnaissance vocale de son éditeur. Rien n'est enregistré par Révizio.)</span></label>
+      <div class="row" style="margin:4px 0 10px"><button type="button" class="ghost small" id="micTest">🎤 Tester le micro</button><span id="micOut" class="muted" role="status" style="flex:1"></span></div>
       <div class="row" style="margin-top:14px"><button type="submit">Enregistrer</button><button type="button" class="ghost" id="test">Tester la clé</button><span id="st"></span></div>
     </form>
     <h2>Mises à jour</h2>
@@ -597,6 +598,15 @@ function viewSettings() {
     read(); const st = document.getElementById('st'); st.innerHTML = '<span class="spinner"></span>';
     const r = await pingProvider();
     st.innerHTML = r.ok ? `<b style="color:var(--ok)">${esc(r.msg)}</b>` : `<span class="err">${esc(r.msg)}</span>`;
+  };
+  const mt = document.getElementById('micTest');
+  if (mt) mt.onclick = async () => {
+    const out = document.getElementById('micOut');
+    if (!micSR()) { out.textContent = 'Ce navigateur ne sait pas écouter la voix (Firefox ne le propose pas ; sur iPhone, ouvre Révizio dans Safari). Les exercices de prononciation restent possibles : tu te juges toi-même.'; return; }
+    const st = await micPermission();
+    if (st === 'denied') { out.textContent = micErrMsg('not-allowed'); return; }
+    out.textContent = 'Parle maintenant : dis « bonjour »… (le navigateur peut te demander l\'autorisation du micro : accepte)';
+    micListen('fr-FR', res => { out.textContent = res.error ? micErrMsg(res.error) : '✔ Ça marche : j\'ai entendu « ' + res.heard[0] + ' ». Coche la case « Activer le micro » ci-dessus, puis Enregistrer.'; });
   };
   const rc = document.getElementById('repCopy'), rx = document.getElementById('repClear');
   if (rc) rc.onclick = async () => {
