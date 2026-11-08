@@ -49,7 +49,7 @@ const empty = { v: 2, settings: { level: '5e', apiKey: '', name: 'Léo' }, cours
   b.querySelector('#mic').click(); check('micro : langue de reconnaissance', rec && rec.lang === 'it-IT');
   rec.onresult({ results: [[{ transcript: q4.answer }]] });
   check('micro : « très proche » si le mot est reconnu, verdict laissé à l\'élève', /Très proche/.test(b.textContent) && res === null);
-  rec.onerror({ error: 'not-allowed' }); check('micro refusé : message clair', /Micro refusé/.test(b.textContent));
+  b.querySelector('#mic').click(); rec.onerror({ error: 'not-allowed' }); check('micro refusé : message clair', /bloqué/.test(b.textContent) && /Autoriser/.test(b.textContent));
   T.db.settings.micro = false; delete h.w.SpeechRecognition;
   // --- mots entre « » + recto des cartes
   const w1 = T.db.cards.find(c => c.subject === 'italien' && T.sayText(c));
