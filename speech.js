@@ -24,7 +24,7 @@ function micErrMsg(code) {
     case 'not-allowed': case 'service-not-allowed': return 'Le micro est bloqué. Pour l\'autoriser : sur ordinateur (Chrome, Edge), clique sur le cadenas à gauche de l\'adresse, puis Micro → Autoriser, et recharge la page ; sur iPhone ou iPad, Réglages → Safari → Micro, et Réglages → Confidentialité → Reconnaissance vocale ; sur Android, appuie sur le cadenas de l\'adresse → Autorisations → Micro. Tu peux aussi te juger sans micro.';
     case 'no-speech': return 'Je n\'ai rien entendu. Rapproche-toi du micro et réessaie, ou juge-toi sans micro.';
     case 'audio-capture': return 'Aucun micro détecté sur cet appareil. Branche-en un, ou juge-toi sans micro.';
-    case 'network': return 'La reconnaissance vocale a besoin d\'Internet. Vérifie ta connexion et réessaie, ou juge-toi sans micro.';
+    case 'network': return (typeof navigator !== 'undefined' && navigator.brave) ? 'Brave bloque le service de reconnaissance vocale de Google (c\'est une protection de la vie privée de Brave) : l\'écoute de ta voix ne marchera pas dans ce navigateur. Utilise Chrome, Edge ou Safari pour les exercices de prononciation, ou juge-toi sans micro.' : 'La reconnaissance vocale a besoin d\'Internet. Vérifie ta connexion et réessaie, ou juge-toi sans micro.';
     case 'language-not-supported': return 'Ce navigateur ne sait pas écouter cette langue. Juge-toi sans micro.';
     case 'aborted': return '';
     default: return 'Le micro n\'a pas fonctionné' + (code ? ' (' + code + ')' : '') + '. Réessaie, ou juge-toi sans micro.';

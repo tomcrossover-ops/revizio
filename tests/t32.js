@@ -38,6 +38,8 @@ const { make, check, done } = require('./harness');
   h.w.webkitSpeechRecognition = mkSR(s => s.onerror({ error: 'not-allowed' }));
   h.$('#micTest').click(); await h.wait(60);
   check('Réglages : test refusé → comment autoriser', /bloqué/.test(h.$('#micOut').textContent));
+  h.w.navigator.brave = { isBrave: async () => true };
+  check('Brave : erreur réseau → explication dédiée (Chrome, Edge ou Safari)', /Brave/.test(h.t.micErrMsg('network')) && /Chrome/.test(h.t.micErrMsg('network')));
   check('Permissions-Policy autorise le micro sur le site', /microphone=\(self\)/.test(require('fs').readFileSync(__dirname + '/../vercel.json', 'utf8')));
   check('aucune erreur JS', h.errors.length === 0, h.errors.join('|'));
   done();
